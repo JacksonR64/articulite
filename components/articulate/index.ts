@@ -7,5 +7,6 @@
 
 export { TeamDisplay } from './team/team-display';
 export { QuestionCard } from './question/question-card';
+export { CountdownTimer } from './timer/countdown-timer';
 
 // Will export components from subfolders once implemented 

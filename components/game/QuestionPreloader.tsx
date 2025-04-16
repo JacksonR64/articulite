@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { generateQuestionsForCategories, DEFAULT_CATEGORIES, getQuestionCache } from '@/lib/api';
+import {
+    generateQuestionsForCategories,
+    DEFAULT_CATEGORIES,
+    getQuestionCache,
+    forceRegenerateQuestions
+} from '@/lib/api/questions';
 import { Question } from '@/lib/storage/models';
 
 interface QuestionPreloaderProps {
@@ -37,6 +42,24 @@ export function QuestionPreloader({
         }
     }, [autoStart]);
 
+    // Add a listener for question cache updates to track progress
+    useEffect(() => {
+        const checkCacheInterval = setInterval(() => {
+            const cache = getQuestionCache();
+            const categoryCount = Object.keys(cache.categories).length;
+            
+            if (categoryCount > 0) {
+                const progress = Math.min(100, (categoryCount / categories.length) * 100);
+                setProgress(Math.floor(progress));
+                
+                // Update cached questions display
+                setCachedQuestions(cache.categories);
+            }
+        }, 500);
+        
+        return () => clearInterval(checkCacheInterval);
+    }, [categories.length]);
+
     const getCategoryStatus = (category: string) => {
         const questions = cachedQuestions[category] || [];
         const unusedQuestions = questions.filter(q => !q.used);
@@ -60,33 +83,18 @@ export function QuestionPreloader({
         setProgress(0);
 
         try {
-            // Process categories sequentially to provide progress feedback
-            const results: Record<string, Question[]> = {};
+            // Force regenerate questions for all categories
+            await forceRegenerateQuestions(categories, questionsPerCategory);
 
-            for (let i = 0; i < categories.length; i++) {
-                const category = categories[i];
-                const categoryStatus = getCategoryStatus(category);
-
-                // Skip if we already have enough questions
-                if (categoryStatus.status === 'complete') {
-                    results[category] = cachedQuestions[category] || [];
-                    setProgress(Math.floor(((i + 1) / categories.length) * 100));
-                    continue;
-                }
-
-                // Generate questions for this category
-                const questions = await generateQuestionsForCategories([category], questionsPerCategory);
-                results[category] = questions[category] || [];
-
-                // Update progress after each category
-                setProgress(Math.floor(((i + 1) / categories.length) * 100));
-            }
-
-            // Update cache display
+            // Update the cache display
+            const cache = getQuestionCache();
             setCachedQuestions(prev => ({
                 ...prev,
-                ...results
+                ...cache.categories
             }));
+
+            // Set progress to 100%
+            setProgress(100);
 
             // Call completion callback
             if (onComplete) {
@@ -117,8 +125,8 @@ export function QuestionPreloader({
                         <div key={category} className="flex justify-between items-center">
                             <span>{category}</span>
                             <span className={`text-sm ${status === 'complete' ? 'text-green-600 dark:text-green-400' :
-                                    status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
-                                        'text-red-600 dark:text-red-400'
+                                status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
+                                    'text-red-600 dark:text-red-400'
                                 }`}>
                                 {count} questions {status === 'complete' ? '✓' : ''}
                             </span>
@@ -149,8 +157,8 @@ export function QuestionPreloader({
                 onClick={handlePreloadQuestions}
                 disabled={isLoading}
                 className={`w-full px-4 py-2 rounded-md font-medium ${isLoading ?
-                        'bg-gray-400 text-gray-700 cursor-not-allowed' :
-                        'bg-blue-600 hover:bg-blue-700 text-white'
+                    'bg-gray-400 text-gray-700 cursor-not-allowed' :
+                    'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
             >
                 {isLoading ? `Caching Questions (${progress}%)` : 'Pre-Cache Questions'}

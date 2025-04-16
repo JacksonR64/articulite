@@ -238,8 +238,189 @@ export async function generateQuestions(
         return questions;
     } catch (error) {
         console.error(`Error generating questions for ${category}:`, error);
-        throw error;
+
+        // Generate procedural random questions as fallback
+        const randomQuestions = generateRandomQuestions(category, count);
+
+        // Update the cache with random questions
+        const cache = getQuestionCache();
+        cache.categories[category] = [
+            ...(cache.categories[category] || []),
+            ...randomQuestions
+        ];
+        cache.lastUpdated = Date.now();
+        saveQuestionCache(cache);
+
+        return randomQuestions;
     }
+}
+
+/**
+ * Generate random questions procedurally without using OpenAI
+ * @param category The category to generate questions for
+ * @param count The number of questions to generate
+ * @returns Array of randomly generated questions
+ */
+function generateRandomQuestions(category: string, count: number): Question[] {
+    const questions: Question[] = [];
+
+    // Templates for different categories
+    const templates: Record<string, string[]> = {
+        'Object': [
+            "Describe a [object] without using the words [restriction]",
+            "Explain what a [object] is to someone who's never seen one",
+            "Describe the shape and function of a [object] without naming it",
+            "Explain how to use a [object] without mentioning its purpose",
+            "Describe a [object] as if you're from another planet"
+        ],
+        'Nature': [
+            "Describe a [nature] without using the words [restriction]",
+            "Explain what makes a [nature] unique without mentioning its appearance",
+            "Describe the experience of encountering a [nature] without visual terms",
+            "Explain the life cycle of a [nature] without using scientific terms",
+            "Describe the sound and feel of a [nature] without mentioning its environment"
+        ],
+        'Person': [
+            "Describe what a [person] does without mentioning their workplace",
+            "Explain the skills needed to be a [person] without naming their profession",
+            "Describe a day in the life of a [person] without mentioning their job title",
+            "Explain how someone becomes a [person] without mentioning education",
+            "Describe what makes a great [person] without using job-related terms"
+        ],
+        'Action': [
+            "Describe [action] without moving the relevant body parts",
+            "Explain how to [action] to someone who's never done it before",
+            "Describe the feeling of [action] without mentioning physical sensations",
+            "Explain the purpose of [action] without mentioning its outcome",
+            "Describe [action] as if you're teaching an alien"
+        ],
+        'World': [
+            "Describe [place] without mentioning its location or famous features",
+            "Explain what makes [place] special without mentioning tourism",
+            "Describe the culture of [place] without naming foods or traditions",
+            "Explain the history of [place] without mentioning dates or events",
+            "Describe what you would experience visiting [place] without visual descriptions"
+        ],
+        'Random': [
+            "Describe the concept of [concept] without using technical terms",
+            "Explain [concept] to a 5-year-old child",
+            "Describe how [concept] affects everyday life without examples",
+            "Explain the importance of [concept] without mentioning benefits",
+            "Describe how [concept] has changed over time without mentioning technology"
+        ]
+    };
+
+    // Random items for each category
+    const items: Record<string, string[]> = {
+        'Object': [
+            "chair", "table", "phone", "computer", "book", "pen", "watch", "lamp", "backpack",
+            "headphones", "umbrella", "sunglasses", "wallet", "mirror", "television", "refrigerator",
+            "toaster", "camera", "bicycle", "clock"
+        ],
+        'Nature': [
+            "mountain", "river", "ocean", "forest", "desert", "waterfall", "volcano", "canyon",
+            "beach", "lake", "island", "cave", "glacier", "reef", "jungle", "valley",
+            "geyser", "tundra", "meadow", "swamp"
+        ],
+        'Person': [
+            "doctor", "teacher", "chef", "artist", "musician", "athlete", "scientist", "writer",
+            "engineer", "firefighter", "pilot", "architect", "photographer", "actor", "dancer",
+            "programmer", "detective", "farmer", "astronaut", "veterinarian"
+        ],
+        'Action': [
+            "running", "swimming", "dancing", "singing", "cooking", "climbing", "writing", "reading",
+            "painting", "laughing", "jumping", "driving", "flying", "diving", "throwing",
+            "catching", "building", "digging", "planting", "fishing"
+        ],
+        'World': [
+            "Tokyo", "New York", "Paris", "Amazon Rainforest", "Great Barrier Reef", "Sahara Desert",
+            "Antarctica", "Great Wall of China", "Grand Canyon", "Venice", "Mount Everest",
+            "Rome", "London", "Cairo", "Sydney", "Rio de Janeiro", "Moscow", "Cape Town",
+            "Mumbai", "Bangkok"
+        ],
+        'Random': [
+            "time", "happiness", "friendship", "music", "knowledge", "freedom", "creativity", "memory",
+            "communication", "celebration", "teamwork", "education", "innovation", "tradition",
+            "progress", "competition", "diversity", "balance", "transformation", "identity"
+        ]
+    };
+
+    // Restrictions for certain categories
+    const restrictions: Record<string, string[]> = {
+        'Object': [
+            "using it", "touching it", "purpose", "function", "common words",
+            "its name", "its size", "its color", "its material", "buying it"
+        ],
+        'Nature': [
+            "size", "color", "location", "weather", "animals",
+            "plants", "water", "rocks", "sky", "beautiful"
+        ],
+        'Person': [
+            "job title", "workplace", "uniform", "tools", "education",
+            "salary", "skills", "training", "experience", "colleagues"
+        ],
+        'Action': [
+            "body parts", "movement", "speed", "direction", "purpose",
+            "energy", "technique", "practice", "learning", "demonstrating"
+        ],
+        'World': [
+            "location", "people", "landmarks", "famous for", "tourism",
+            "language", "food", "weather", "history", "population"
+        ],
+        'Random': [
+            "examples", "definitions", "explaining", "comparing", "common terms",
+            "technical words", "simple terms", "analogies", "scenarios", "measurements"
+        ]
+    };
+
+    // Difficulty levels
+    const difficulties = ["easy", "medium", "hard"];
+
+    // Generate random questions based on templates
+    for (let i = 0; i < count; i++) {
+        // Get random template
+        const templates_for_category = templates[category] || templates["Random"];
+        const template = templates_for_category[Math.floor(Math.random() * templates_for_category.length)];
+
+        // Get random item
+        const items_for_category = items[category] || items["Random"];
+        const item = items_for_category[Math.floor(Math.random() * items_for_category.length)];
+
+        // Get random restriction if the template needs it
+        let restriction = "";
+        if (template.includes("[restriction]")) {
+            const restrictions_for_category = restrictions[category] || restrictions["Random"];
+            restriction = restrictions_for_category[Math.floor(Math.random() * restrictions_for_category.length)];
+        }
+
+        // Create question text by replacing placeholders
+        let text = template
+            .replace("[object]", item)
+            .replace("[nature]", item)
+            .replace("[person]", item)
+            .replace("[action]", item)
+            .replace("[place]", item)
+            .replace("[concept]", item);
+
+        if (restriction) {
+            text = text.replace("[restriction]", restriction);
+        }
+
+        // Assign random difficulty, weighted toward medium
+        const random = Math.random();
+        const difficulty = random < 0.3 ? "easy" : (random < 0.7 ? "medium" : "hard");
+
+        // Add to questions array
+        questions.push({
+            id: uuidv4(),
+            category,
+            text,
+            difficulty,
+            used: false
+        });
+    }
+
+    return questions;
 }
 
 /**
@@ -275,4 +456,25 @@ export async function generateQuestionsForCategories(
     }
 
     return results;
+}
+
+/**
+ * Force regeneration of questions by clearing the cache and generating new ones
+ * @param categories The categories to regenerate questions for
+ * @param countPerCategory The number of questions per category
+ */
+export async function forceRegenerateQuestions(
+    categories: string[] = DEFAULT_CATEGORIES,
+    countPerCategory: number = 10
+): Promise<void> {
+    // Clear the current cache first
+    clearQuestionCache();
+
+    // Then generate new questions for all categories
+    try {
+        await generateQuestionsForCategories(categories, countPerCategory);
+        console.log(`Successfully regenerated questions for ${categories.length} categories`);
+    } catch (error) {
+        console.error("Error regenerating questions:", error);
+    }
 } 
