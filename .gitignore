@@ -65,5 +65,7 @@ tasks/
 # Cursor MCP config with sensitive API keys
 .cursor/mcp.json
 
-# Add the documentation files we want to keep locally but not track in Git
-PROJECT_STRUCTURE.md 
+# Remove these lines to track the documentation files again
+# CHANGES.md
+# PROJECT_STRUCTURE.md
+# README-task-master.md 
