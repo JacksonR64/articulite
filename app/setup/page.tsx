@@ -43,9 +43,22 @@ export default function SetupPage() {
     const [selectedTeamForPlayer, setSelectedTeamForPlayer] = useState<number | null>(null);
     const [showQuestionCache, setShowQuestionCache] = useState(false);
     const [questionCacheComplete, setQuestionCacheComplete] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
 
     const router = useRouter();
     const { isAuthenticated, isLoading, logout } = useAuth();
+
+    // Add a direct navigation helper function
+    const navigateTo = (path: string) => {
+        console.log(`Navigating to: ${path}`);
+        window.location.href = path;
+    };
+
+    // Custom logout function that handles navigation
+    const handleLogout = () => {
+        logout(); // Call the original logout function
+        navigateTo('/auth'); // Then navigate directly
+    };
 
     // Update localStorage whenever state changes
     useEffect(() => {
@@ -142,20 +155,45 @@ export default function SetupPage() {
         setTeamPlayers(newTeamPlayers);
     };
 
-    const handleStartGame = () => {
-        // Store game settings in localStorage - already handled by useEffect
+    const handleStartGame = (e: React.MouseEvent<HTMLButtonElement>) => {
+        // Prevent default to ensure the button click doesn't get stopped
+        e.preventDefault();
 
-        // Save player assignments to localStorage if needed
-        localStorage.setItem('teamPlayers', JSON.stringify(teamPlayers));
-        localStorage.setItem('gameConfig', JSON.stringify({
-            allowSkips,
-            maxSkipsPerTurn,
-            useTimer,
-            timeLimit,
-            winningScore
-        }));
+        console.log("Start Game button clicked, preparing navigation");
 
-        router.push('/game');
+        // Guard against multiple clicks
+        if (isNavigating) {
+            console.log("Navigation already in progress, ignoring click");
+            return;
+        }
+
+        setIsNavigating(true);
+
+        try {
+            // Store game settings in localStorage - already handled by useEffect
+
+            // Save player assignments to localStorage if needed
+            localStorage.setItem('teamPlayers', JSON.stringify(teamPlayers));
+
+            // Use 'gameSettings' key to match what the game page expects
+            localStorage.setItem('gameSettings', JSON.stringify({
+                allowSkips,
+                maxSkipsPerTurn,
+                useTimer,
+                timeLimit,
+                winningScore
+            }));
+
+            console.log("Game settings saved, navigating to /game");
+
+            // Use direct window.location navigation instead of relying on the router
+            // This is more reliable for Next.js apps when router.push() isn't working
+            window.location.href = "/game";
+        } catch (error) {
+            console.error("Error during navigation:", error);
+            // Fallback to direct navigation
+            window.location.href = "/game";
+        }
     };
 
     // If loading auth state or not authenticated, show loading
@@ -173,7 +211,7 @@ export default function SetupPage() {
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Game Setup</h1>
                 <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="px-3 py-1 text-sm text-red-600 hover:text-red-800 rounded flex items-center"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -397,18 +435,19 @@ export default function SetupPage() {
             </div>
 
             <div className="flex justify-between space-x-4">
-                <Link
-                    href="/"
+                <button
+                    onClick={() => navigateTo('/')}
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                     Back to Home
-                </Link>
+                </button>
 
                 <button
                     onClick={handleStartGame}
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    disabled={isNavigating}
                 >
-                    Start Game
+                    {isNavigating ? 'Starting...' : 'Start Game'}
                 </button>
             </div>
         </div>

@@ -50,12 +50,9 @@ export function useLocalStorage<T>(
                 // Save to local storage
                 window.localStorage.setItem(key, JSON.stringify(valueToStore));
 
-                // Dispatch storage event for cross-tab communication
-                // This is needed because localStorage events aren't triggered in the same tab
-                window.dispatchEvent(new StorageEvent('storage', {
-                    key,
-                    newValue: JSON.stringify(valueToStore)
-                }));
+                // NOTE: We're removing this custom event dispatch as it might interfere with navigation
+                // Dispatch storage event for cross-tab communication is now handled by the browser naturally
+                // when localStorage.setItem is called. This custom event might be causing issues.
             }
         } catch (error) {
             console.error(`Error setting localStorage key "${key}":`, error);

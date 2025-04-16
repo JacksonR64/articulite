@@ -13,6 +13,18 @@ export default function GamePage() {
     const router = useRouter();
     const { isAuthenticated, isLoading, logout } = useAuth();
 
+    // Add a direct navigation helper function
+    const navigateTo = (path: string) => {
+        console.log(`Navigating to: ${path}`);
+        window.location.href = path;
+    };
+
+    // Custom logout function that handles navigation
+    const handleLogout = () => {
+        logout(); // Call the original logout function
+        navigateTo('/auth'); // Then navigate directly
+    };
+
     // Sample question data
     const questions = [
         { category: 'Object', question: 'Chair' },
@@ -30,9 +42,10 @@ export default function GamePage() {
             setGameSettings(JSON.parse(settings));
         } else if (!isLoading && !settings) {
             // Redirect to setup if no settings are found
-            router.push('/setup');
+            console.log("No game settings found, redirecting to setup");
+            navigateTo('/setup');
         }
-    }, [isLoading, router]);
+    }, [isLoading]);
 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const currentQuestion = questions[currentQuestionIndex % questions.length];
@@ -62,8 +75,8 @@ export default function GamePage() {
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">ArticuLITE</h1>
                 <div className="flex items-center space-x-4">
-                    <Link
-                        href="/setup"
+                    <button
+                        onClick={() => navigateTo('/setup')}
                         className="px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,10 +84,10 @@ export default function GamePage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         Settings
-                    </Link>
+                    </button>
 
                     <button
-                        onClick={logout}
+                        onClick={handleLogout}
                         className="px-3 py-1 text-sm text-red-600 hover:text-red-800 rounded flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -57,6 +57,22 @@ This document summarizes the changes made to the project as part of the major re
 - Added TESTING.md for testing guidelines and best practices
 - Created CHANGES.md to track significant updates
 
+## 5. Navigation System Fixes
+
+- Fixed button click functionality across the application:
+  - Implemented consistent navigation pattern using direct window.location approach
+  - Replaced problematic Next.js Router navigation with more reliable methods
+  - Resolved localStorage key mismatch between setup and game pages
+  - Added navigation helper functions for consistent implementation
+  - Fixed redirection loops caused by mismatched data storage keys
+- Improved event handling:
+  - Added proper event.preventDefault() to prevent navigation interruption
+  - Implemented visual feedback during navigation (button state changes)
+  - Added error handling for navigation failures with fallback options
+- Created documentation for navigation debugging:
+  - Added new Cursor rules for navigation debugging
+  - Documented data consistency checking approach
+
 ## Next Steps
 
 After these foundational changes, the project is ready to continue development with Task Master using the improved infrastructure:
@@ -66,3 +82,26 @@ After these foundational changes, the project is ready to continue development w
 3. Ensure comprehensive test coverage
 4. Use the auto-commit workflow for reliable commits
 5. Continue developing the ArticuLITE game features 
+
+## Known Issues
+
+### Node.js and Next.js Compatibility
+
+There are known compatibility issues between newer Node.js versions and Next.js 15:
+
+- Node.js v23.10.0 causes module resolution errors with Next.js
+- The specific error relates to `Cannot find module '../server/require-hook'` in the Next.js binary
+- These issues occur when running with turbopack (`next dev --turbopack`)
+
+#### Workaround Options:
+
+1. Use Node.js v18.x or v20.x LTS for development (recommended)
+2. Temporarily switch to the standard Next.js dev server with `--no-turbo` flag:
+   ```bash
+   npm run dev -- --no-turbo
+   ```
+3. If using fresh-articulite, ensure all dependencies are properly installed with:
+   ```bash
+   cd fresh-articulite
+   npm ci
+   ``` 
