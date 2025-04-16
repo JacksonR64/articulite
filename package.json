@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "pkill -f 'node.*next' || true",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
@@ -16,7 +17,13 @@
     "test:all": "npm run lint && npm run test && npm run test:e2e",
     "verify": "npm run lint && npm run build && npm run test && npm run test:e2e",
     "prepare-commit": "npm run verify && git add .",
-    "auto-commit": "node scripts/auto-commit.js"
+    "auto-commit": "node scripts/auto-commit.js",
+    "server:status": "node scripts/manage-servers.js",
+    "server:kill-all": "node scripts/manage-servers.js kill-all",
+    "server:kill-port": "node scripts/manage-servers.js kill-port",
+    "server:check-port": "node scripts/manage-servers.js check-port",
+    "clean-start": "npm run server:kill-all && npm run dev",
+    "test:homepage": "node scripts/run-simple-test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -39,7 +46,7 @@
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^10.2.0",
     "lucide-react": "^0.488.0",
-    "next": "15.3.0",
+    "next": "^15.3.0",
     "openai": "^4.89.0",
     "ora": "^8.2.0",
     "react": "^19.0.0",
@@ -50,7 +57,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@playwright/test": "^1.51.1",
+    "@playwright/test": "^1.40.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

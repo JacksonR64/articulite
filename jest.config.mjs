@@ -12,7 +12,11 @@ const config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   preset: 'ts-jest',
-  testPathIgnorePatterns: ['/node_modules/', '/playwright/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/playwright/',
+    '/e2e/'  // Exclude e2e tests from Jest
+  ],
   collectCoverage: true,
   collectCoverageFrom: [
     '**/*.{js,jsx,ts,tsx}',
