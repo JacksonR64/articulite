@@ -66,6 +66,4 @@ tasks/
 .cursor/mcp.json
 
 # Add the documentation files we want to keep locally but not track in Git
-CHANGES.md
-PROJECT_STRUCTURE.md
-README-task-master.md 
+PROJECT_STRUCTURE.md 
