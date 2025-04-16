@@ -1,0 +1,205 @@
+<context>
+# Overview  
+Articulate Online is a web-based adaptation of the popular Articulate board game, designed for multiplayer play on a single device. The app solves the problem of repeated questions during frequent gameplay by generating fresh AI-powered questions while maintaining the engaging gameplay mechanics that made the original board game successful. The product is primarily for friends and family who enjoy the Articulate board game but want more variety in questions.
+
+# Core Features  
+## Question Generation and Management
+- AI-powered question generation using GPT-4o that mimics the style and difficulty of official Articulate questions
+- Questions across the standard 6 categories: Object, Nature, Action, World, Person, and Random
+- Question caching at the start of each game for smooth play experience
+- Question feedback system to rate difficulty and improve future generation
+
+## Game Setup
+- Team creation with player name entry
+- Random team assignment option
+- Customizable turn timers (30, 60, 120 seconds or custom)
+- Configurable number of skips (default: 1 skip per 30 seconds of timer)
+- Password protection to prevent unauthorized usage
+
+## Gameplay Mechanics
+- Turn-based system with visual timer countdown
+- Category-based questions with "Correct" and "Skip" buttons
+- End-of-turn summary showing correct answers, skipped questions, and board position
+- Support for both digital-only play and as a companion app for physical board games
+- Board synchronization features to keep digital and physical play aligned
+
+## Physical Board Integration
+- "Tabletop Companion Mode" for use with a physical Articulate board
+- End-of-turn instructions for physical piece movement
+- Category confirmation to ensure synchronization
+- Special space (Control & Spin) reminders and instructions
+
+# User Experience  
+## User Personas
+- Primary: Groups of friends/family (4+ players) who already own and enjoy the physical Articulate game
+- Secondary: New players looking for a digital-only version of the game
+
+## Key User Flows
+- Game Setup Flow: Enter password → Configure teams → Set timer options → Select play mode (digital or tabletop)
+- Turn Flow: View category → Read question → Team guesses → Tap "Correct" or "Skip" → Next question → Timer ends → View summary
+- Board Sync Flow: See correct answers → Move physical piece → Confirm new category → Continue play
+
+## UI/UX Considerations
+- Clean, simple interface optimized for passing device between teams
+- Large, readable text for questions (especially important when device is being held up for group play)
+- Clear visual indication of current team and timer status
+- Intuitive controls that can be operated quickly during fast-paced gameplay
+- Consistent color coding matching the physical board categories
+</context>
+<PRD>
+# Technical Architecture  
+## System Components
+- **Frontend**: React-based single-page application
+- **AI Integration**: OpenAI API for GPT-4o question generation
+- **Local Storage**: Browser localStorage for game state persistence
+- **Cache System**: Client-side question caching for performance
+
+## Data Models
+- **Game**: Tracks teams, current state, settings, and turn history
+- **Team**: Team name, players, score, board position
+- **Question**: Content, category, difficulty rating, feedback
+- **Turn**: Team, category, questions attempted, correct answers, skips used
+
+## APIs and Integrations
+- **OpenAI API**: For GPT-4o question generation
+- **Local Browser Storage API**: For maintaining game state between sessions
+
+## Infrastructure Requirements
+- **Hosting**: Static web hosting (GitHub Pages, Vercel, or Netlify)
+- **API Consumption**: Client-side API calls to OpenAI with user's API key
+- **No Backend Required**: All game logic handled client-side
+
+# Development Roadmap  
+## MVP Phase
+1. **Core Game Setup**
+   - Password protection system
+   - Team creation interface
+   - Game setting configuration (timers, skips)
+   - Play mode selection (digital/tabletop)
+
+2. **Question Generation System**
+   - OpenAI API integration
+   - Question prompting and formatting
+   - Category-based question generation
+   - Question caching mechanism
+
+3. **Basic Gameplay Loop**
+   - Turn management
+   - Timer implementation
+   - Question display
+   - Correct/Skip functionality
+   - Turn summary screen
+
+4. **Tabletop Integration**
+   - Board position tracking
+   - Move instructions
+   - Category confirmation
+   - Special space handling
+
+## Enhancement Phase
+1. **Expanded Feedback System**
+   - Detailed question rating
+   - Difficulty adjustment based on feedback
+   - Question blacklisting for poorly rated items
+
+2. **UI/UX Improvements**
+   - Animations and transitions
+   - Sound effects
+   - Theme customization
+
+3. **Game Statistics**
+   - Team performance tracking
+   - Question statistics
+   - Token usage monitoring
+
+4. **Accessibility Features**
+   - Color-blind friendly design
+   - Text size options
+   - Screen reader compatibility
+
+## Future Expansion Phase
+1. **User Accounts**
+   - Cloud save functionality
+   - Cross-device synchronization
+   - Game history
+
+2. **Remote Multiplayer**
+   - Real-time game sharing
+   - Voice integration
+   - Remote team play
+
+3. **Mobile Apps**
+   - Native iOS/Android versions
+   - Offline play capability
+   - Push notifications
+
+# Logical Dependency Chain
+1. **Foundation Layer** (Must be completed first)
+   - Basic React app setup with routing
+   - OpenAI API integration and prompt engineering
+   - Password protection system
+   - Local storage implementation
+
+2. **Core Gameplay Layer**
+   - Team setup and configuration
+   - Question generation and caching
+   - Timer and turn management
+   - Core gameplay loop (question display, correct/skip)
+
+3. **Physical Integration Layer**
+   - Board position tracking
+   - Turn summary with move instructions
+   - Category confirmation flow
+   - Special space handling
+
+4. **Feedback & Polish Layer**
+   - Question feedback collection
+   - UI animations and transitions
+   - Performance optimization
+   - Cross-browser testing
+
+# Risks and Mitigations  
+## Technical Challenges
+- **Risk**: OpenAI API rate limits and costs
+  **Mitigation**: Implement aggressive caching, batch question generation, and clear token usage display
+
+- **Risk**: Question quality and consistency
+  **Mitigation**: Create detailed prompts with examples, implement feedback system to improve generation
+
+- **Risk**: Mobile browser compatibility
+  **Mitigation**: Use responsive design principles, test on various devices, minimize complex animations
+
+## MVP Scoping
+- **Risk**: Feature creep extending development time
+  **Mitigation**: Clear prioritization of features, focus on core gameplay first, add enhancements iteratively
+
+- **Risk**: Complexity of physical board integration
+  **Mitigation**: Start with simplified tracking, gather user feedback, refine synchronization process
+
+## Resource Constraints
+- **Risk**: Limited development resources
+  **Mitigation**: Leverage existing libraries where possible, focus on functional MVP before polish
+
+- **Risk**: AI API costs for ongoing usage
+  **Mitigation**: Optimize prompts for token efficiency, implement usage limits, explore cheaper alternatives
+
+# Appendix  
+## Technical Specifications
+- **Frontend Framework**: React 18+
+- **State Management**: React Context API or Redux
+- **Styling**: Tailwind CSS or styled-components
+- **API Integration**: OpenAI Node.js SDK or direct API calls
+- **Deployment**: GitHub Pages or Vercel
+
+## Sample Question Generation Prompt
+```
+Generate 10 Articulate-style questions for the {category} category. 
+Each question should be a single word or short phrase that a player would need to describe to their team without saying the word itself.
+Questions should vary in difficulty from easy to challenging, similar to the following examples:
+[Examples based on sample cards]
+```
+
+## Token Usage Estimates
+- Question generation: ~500-1000 tokens per batch of 10 questions
+- Estimated cost per game: $0.10-$0.30 depending on question count and complexity
+</PRD> 
