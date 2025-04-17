@@ -3,42 +3,57 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSafeLocalStorage } from '@/hooks/useSafeLocalStorage';
 import { GameSettings, Team } from '@/lib/storage/models';
 import { StorageKeys } from '@/lib/storage/models';
 import { QuestionPreloader } from '@/components/game';
+import { useAuth, SignOutButton, RedirectToSignIn } from '@clerk/nextjs';
+import { AuthWrapper } from '@/components/auth';
+import { SpinnerOverlay } from '@/components/ui/spinner';
+
+// Default values for initial state to ensure consistency between server and client
+const DEFAULT_TEAMS: Team[] = [
+    { id: 1, name: 'Team 1', color: 'blue', score: 0 },
+    { id: 2, name: 'Team 2', color: 'red', score: 0 },
+];
+
+const DEFAULT_SETTINGS: GameSettings = {
+    timeLimit: 30,
+    winningScore: 30,
+    questionsPerTurn: 5,
+    skipPenalty: 1,
+    categories: ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+    useTimer: true
+};
 
 export default function SetupPage() {
-    // Use localStorage to persist game settings
-    const [gameState, setGameState] = useLocalStorage<{
+    // Use Clerk authentication
+    const { isLoaded, isSignedIn } = useAuth();
+
+    // Use safe localStorage to persist game settings - this prevents hydration mismatches
+    const [gameState, setGameState] = useSafeLocalStorage<{
         teams: Team[];
         settings: GameSettings;
     }>(StorageKeys.CURRENT_GAME, {
-        teams: [
-            { id: 1, name: 'Team 1', color: 'blue', score: 0 },
-            { id: 2, name: 'Team 2', color: 'red', score: 0 },
-        ],
-        settings: {
-            timeLimit: 30,
-            winningScore: 30,
-            categories: ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
-            useTimer: true,
-        }
+        teams: DEFAULT_TEAMS,
+        settings: DEFAULT_SETTINGS
     });
 
-    // Create local state from persisted state
-    const [teams, setTeams] = useState<Team[]>(gameState.teams);
-    const [timeLimit, setTimeLimit] = useState(gameState.settings.timeLimit);
-    const [winningScore, setWinningScore] = useState(gameState.settings.winningScore);
-    const [useTimer, setUseTimer] = useState(gameState.settings.useTimer);
+    // Create local state from persisted state, using default values to prevent hydration issues
+    const [teams, setTeams] = useState<Team[]>(DEFAULT_TEAMS);
+    const [timeLimit, setTimeLimit] = useState(DEFAULT_SETTINGS.timeLimit);
+    const [winningScore, setWinningScore] = useState(DEFAULT_SETTINGS.winningScore);
+    const [useTimer, setUseTimer] = useState(DEFAULT_SETTINGS.useTimer);
     const [allowSkips, setAllowSkips] = useState(true);
     const [maxSkipsPerTurn, setMaxSkipsPerTurn] = useState(3);
     const [showPlayerNames, setShowPlayerNames] = useState(false);
-    // Track player names for each team
-    const [teamPlayers, setTeamPlayers] = useState<Record<number, string[]>>(
-        teams.reduce((acc, team) => ({ ...acc, [team.id]: [] }), {})
-    );
+    const [teamPlayers, setTeamPlayers] = useState<Record<number, string[]>>(() => {
+        const initialTeamPlayers: Record<number, string[]> = {};
+        DEFAULT_TEAMS.forEach(team => {
+            initialTeamPlayers[team.id] = [];
+        });
+        return initialTeamPlayers;
+    });
     const [newPlayerName, setNewPlayerName] = useState('');
     const [selectedTeamForPlayer, setSelectedTeamForPlayer] = useState<number | null>(null);
     const [showQuestionCache, setShowQuestionCache] = useState(false);
@@ -46,18 +61,33 @@ export default function SetupPage() {
     const [isNavigating, setIsNavigating] = useState(false);
 
     const router = useRouter();
-    const { isAuthenticated, isLoading, logout } = useAuth();
+
+    // Sync state with localStorage value after component mounts
+    useEffect(() => {
+        if (gameState) {
+            if (gameState.teams && Array.isArray(gameState.teams)) {
+                setTeams(gameState.teams);
+            }
+
+            if (gameState.settings) {
+                setTimeLimit(gameState.settings.timeLimit || DEFAULT_SETTINGS.timeLimit);
+                setWinningScore(gameState.settings.winningScore || DEFAULT_SETTINGS.winningScore);
+                setUseTimer(gameState.settings.useTimer !== false);
+            }
+
+            // Update team players after teams are updated
+            const updatedTeamPlayers: Record<number, string[]> = {};
+            (gameState.teams || DEFAULT_TEAMS).forEach(team => {
+                updatedTeamPlayers[team.id] = [];
+            });
+            setTeamPlayers(updatedTeamPlayers);
+        }
+    }, [gameState]);
 
     // Add a direct navigation helper function
     const navigateTo = (path: string) => {
         console.log(`Navigating to: ${path}`);
         window.location.href = path;
-    };
-
-    // Custom logout function that handles navigation
-    const handleLogout = () => {
-        logout(); // Call the original logout function
-        navigateTo('/auth'); // Then navigate directly
     };
 
     // Update localStorage whenever state changes
@@ -67,11 +97,13 @@ export default function SetupPage() {
             settings: {
                 timeLimit,
                 winningScore,
-                categories: gameState.settings.categories,
+                questionsPerTurn: DEFAULT_SETTINGS.questionsPerTurn,
+                skipPenalty: DEFAULT_SETTINGS.skipPenalty,
+                categories: gameState?.settings?.categories || DEFAULT_SETTINGS.categories,
                 useTimer,
             }
         });
-    }, [teams, timeLimit, winningScore, useTimer, setGameState]);
+    }, [teams, timeLimit, winningScore, useTimer, setGameState, gameState?.settings?.categories]);
 
     const handleAddTeam = () => {
         if (teams.length < 6) {
@@ -170,24 +202,27 @@ export default function SetupPage() {
         setIsNavigating(true);
 
         try {
-            // Store game settings in localStorage - already handled by useEffect
+            // Save teams to a separate, reliable key
+            localStorage.setItem('articulate:teams', JSON.stringify(teams || []));
 
-            // Save player assignments to localStorage if needed
-            localStorage.setItem('teamPlayers', JSON.stringify(teamPlayers));
-
-            // Use 'gameSettings' key to match what the game page expects
-            localStorage.setItem('gameSettings', JSON.stringify({
+            // Save settings to a separate, reliable key
+            localStorage.setItem('articulate:settings', JSON.stringify({
+                timeLimit: timeLimit || 30,
+                winningScore: winningScore || 30,
+                categories: gameState?.settings?.categories || ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+                useTimer: useTimer !== false,
+                questionsPerTurn: 5,  // Default value
+                skipPenalty: 1,       // Default value
                 allowSkips,
-                maxSkipsPerTurn,
-                useTimer,
-                timeLimit,
-                winningScore
+                maxSkipsPerTurn
             }));
+
+            // Clear any existing game state to start fresh
+            localStorage.removeItem('articulate:current_game');
 
             console.log("Game settings saved, navigating to /game");
 
             // Use direct window.location navigation instead of relying on the router
-            // This is more reliable for Next.js apps when router.push() isn't working
             window.location.href = "/game";
         } catch (error) {
             console.error("Error during navigation:", error);
@@ -196,29 +231,30 @@ export default function SetupPage() {
         }
     };
 
-    // If loading auth state or not authenticated, show loading
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-                <p className="ml-2">Loading...</p>
-            </div>
-        );
+    // If loading auth state, show loading spinner
+    if (!isLoaded) {
+        return <SpinnerOverlay message="Loading authentication..." />;
+    }
+
+    // If not signed in, redirect to sign-in page
+    if (!isSignedIn) {
+        return <RedirectToSignIn />;
     }
 
     return (
         <div className="container mx-auto max-w-2xl py-8 px-4">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Game Setup</h1>
-                <button
-                    onClick={handleLogout}
-                    className="px-3 py-1 text-sm text-red-600 hover:text-red-800 rounded flex items-center"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Logout
-                </button>
+                <SignOutButton>
+                    <button
+                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800 rounded flex items-center"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                    </button>
+                </SignOutButton>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-6">
