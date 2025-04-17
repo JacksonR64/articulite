@@ -83,8 +83,8 @@ export default function SetupPage() {
         }
     }, []);
 
-    // Update localStorage whenever state changes - fixed to avoid circular dependency
-    useEffect(() => {
+    // Add a saveSettings function to explicitly save settings when needed
+    const saveSettings = () => {
         setGameState({
             teams,
             settings: {
@@ -92,12 +92,13 @@ export default function SetupPage() {
                 winningScore,
                 questionsPerTurn: 5,
                 skipPenalty: 1,
-                categories, // Use the new categories state instead of referring to gameState
+                categories,
                 useTimer,
             }
         });
-    }, [teams, timeLimit, winningScore, useTimer, categories, setGameState]); // Remove gameState from dependencies
+    };
 
+    // Update existing handlers to call saveSettings after state changes
     const handleAddTeam = () => {
         if (teams.length < 6) {
             const colors = ['blue', 'red', 'green', 'yellow', 'purple', 'orange'];
@@ -117,6 +118,9 @@ export default function SetupPage() {
                 ...prev,
                 [newTeamId]: []
             }));
+
+            // Save changes
+            setTimeout(saveSettings, 0);
         }
     };
 
@@ -130,6 +134,9 @@ export default function SetupPage() {
                 delete updated[id];
                 return updated;
             });
+
+            // Save changes
+            setTimeout(saveSettings, 0);
         }
     };
 
@@ -137,6 +144,9 @@ export default function SetupPage() {
         setTeams(teams.map(team =>
             team.id === id ? { ...team, name } : team
         ));
+
+        // Save changes - use setTimeout to ensure state is updated first
+        setTimeout(saveSettings, 0);
     };
 
     const handleAddPlayer = () => {
@@ -202,7 +212,7 @@ export default function SetupPage() {
             localStorage.setItem('articulate:settings', JSON.stringify({
                 timeLimit: timeLimit || 30,
                 winningScore: winningScore || 30,
-                categories: categories, // Use the categories state variable
+                categories: categories,
                 useTimer: useTimer !== false,
                 questionsPerTurn: 5,  // Default value
                 skipPenalty: 1,       // Default value
@@ -374,7 +384,10 @@ export default function SetupPage() {
                             type="checkbox"
                             id="useTimer"
                             checked={useTimer}
-                            onChange={(e) => setUseTimer(e.target.checked)}
+                            onChange={(e) => {
+                                setUseTimer(e.target.checked);
+                                setTimeout(saveSettings, 0);
+                            }}
                             className="mr-2 h-4 w-4"
                         />
                         <label htmlFor="useTimer" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -392,7 +405,10 @@ export default function SetupPage() {
                                 min="10"
                                 max="120"
                                 value={timeLimit}
-                                onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+                                onChange={(e) => {
+                                    setTimeLimit(parseInt(e.target.value));
+                                    setTimeout(saveSettings, 0);
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
                             />
                         </div>
@@ -407,7 +423,10 @@ export default function SetupPage() {
                             min="5"
                             max="100"
                             value={winningScore}
-                            onChange={(e) => setWinningScore(parseInt(e.target.value))}
+                            onChange={(e) => {
+                                setWinningScore(parseInt(e.target.value));
+                                setTimeout(saveSettings, 0);
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
                         />
                     </div>
