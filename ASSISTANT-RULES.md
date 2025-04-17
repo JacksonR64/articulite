@@ -177,4 +177,32 @@ In this session, we successfully diagnosed and fixed navigation issues across th
    - Implemented error handling with fallback navigation options
    - Resolved redirect loops caused by inconsistent localStorage keys
 
+The most valuable lessons were: (1) check data consistency across components before assuming event problems, (2) trace entire navigation flows including initialization logic, and (3) use consistent navigation methods throughout the application.
+
+## Hydration Debugging Rules
+
+1. **SSR/CSR Consistency Rule**
+   - Initial server-rendered HTML must match client-side rendered content
+   - Use mounting detection (`useState(false)` + `useEffect` to set true) to handle browser-only features
+   - Set identical default values for SSR and client rendering to prevent mismatches
+   - Never access browser APIs (localStorage, window, document) during initial render
+
+2. **Safe Local Storage Pattern Rule**
+   - Create separate hooks (e.g., `useSafeLocalStorage`) that handle hydration properly
+   - Initialize state with fixed default values, not localStorage values
+   - Load from localStorage only after component has mounted via useEffect
+   - Provide clear documentation warnings for proper usage patterns
+
+3. **Browser API Access Rule**
+   - Add `typeof window !== 'undefined'` checks before all browser API access
+   - Create wrapper functions that safely handle server/client differences
+   - Consider creating separate client components (with 'use client' directive) for browser API usage
+   - Add meaningful console warnings when APIs are unavailable
+
+4. **Component Structure for Hydration Rule**
+   - Split components with conditional rendering based on client-side state
+   - Use the "content swapping after mount" pattern for components that need browser APIs
+   - Provide identical skeletons/placeholders during SSR for dynamic content
+   - Consider using Next.js suspense boundaries for components that might cause hydration issues
+
 The most valuable lessons were: (1) check data consistency across components before assuming event problems, (2) trace entire navigation flows including initialization logic, and (3) use consistent navigation methods throughout the application. 
