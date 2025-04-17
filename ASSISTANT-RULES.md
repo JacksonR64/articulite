@@ -69,6 +69,40 @@
     - Then check navigation methods and redirects
     - Finally, investigate event handling details
 
+## Clerk Authentication Rules
+
+1. **Clerk API Version Compatibility Rule**
+   - Always verify that middleware implementation matches the installed Clerk version
+   - Check for breaking API changes between versions (especially `auth().protect()` vs manual auth flow)
+   - Use `await auth()` with async/await pattern as Clerk auth is asynchronous
+   - Verify required imports (e.g., `NextResponse`) when implementing middleware redirects
+
+2. **Authentication Flow Verification Rule**
+   - Test both authenticated and unauthenticated user journeys
+   - Verify that public routes are accessible without authentication
+   - Confirm that protected routes correctly redirect to sign-in
+   - Check for redirect loops caused by incompatible middleware implementations
+
+3. **Build-time vs. Runtime Auth Verification Rule**
+   - Check both build-time (`npm run build`) and runtime (`npm run dev`) for auth-related errors
+   - Be aware of SSR/SSG complications with authentication (e.g., useSearchParams in SSO callback pages)
+   - Consider disabling static generation for authentication-related pages
+   - Test both development and production builds for authentication compatibility
+
+4. **Middleware Debugging Rule**
+   - Use `{ debug: true }` in clerkMiddleware for detailed logs during development
+   - Check browser network requests to detect redirect patterns and auth issues
+   - Console log key steps in authentication flow to pinpoint exact failure points
+   - Add explicit error handling for authentication failure scenarios
+
+## Next.js 15+ and Clerk Integration Rules
+
+1. **Next.js 15 Compatibility Rule**
+   - Be aware of Node.js version compatibility issues with Next.js 15
+   - Use LTS Node.js versions (18.x or 20.x) for development
+   - Understand correct flag usage (e.g., `--turbo` instead of `--no-turbo`)
+   - Verify middleware syntax compatibility with Next.js 15
+
 ## Command Reference for Future Use
 
 ### Server Management Commands
