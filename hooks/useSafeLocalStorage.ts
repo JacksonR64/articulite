@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom hook for persisting state in localStorage that safely handles SSR
@@ -17,12 +17,21 @@ export function useSafeLocalStorage<T>(
     // Use this to track if we've mounted yet
     const [isMounted, setIsMounted] = useState(false);
 
+    // Track if we've already initialized from localStorage
+    const isInitialized = useRef(false);
+
     // Initially use the provided initialValue for SSR
     const [storedValue, setStoredValue] = useState<T>(initialValue);
 
     // Load value from localStorage only after mounting on the client
     useEffect(() => {
+        // Skip if already initialized
+        if (isInitialized.current) {
+            return;
+        }
+
         setIsMounted(true);
+        isInitialized.current = true;
 
         try {
             // Get from local storage by key

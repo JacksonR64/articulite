@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { forceRegenerateQuestions } from '@/lib/api/questions';
 import { RedirectToSignIn } from '@clerk/nextjs';
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
@@ -38,6 +38,9 @@ const DEFAULT_SETTINGS: GameSettings = {
 
 // Main game page
 export default function GamePage() {
+    // Track if data has been loaded from localStorage to prevent infinite loops
+    const dataLoadedRef = useRef(false);
+
     // We'll wrap useUser in try/catch to gracefully handle when ClerkProvider isn't available yet
     let userState = { isLoaded: false, isSignedIn: false };
 
@@ -64,9 +67,15 @@ export default function GamePage() {
 
     // Load game data from localStorage on client-side only
     useEffect(() => {
+        // Only load data once to prevent infinite loops
+        if (dataLoadedRef.current) {
+            return;
+        }
+
         const loadGameData = async () => {
             try {
                 console.log('Loading game data from localStorage...');
+                dataLoadedRef.current = true;
 
                 // Set tabletop mode from stored value
                 setIsTabletopMode(isTabletopModeStored);
