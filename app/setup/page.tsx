@@ -47,6 +47,8 @@ export default function SetupPage() {
     const [allowSkips, setAllowSkips] = useState(true);
     const [maxSkipsPerTurn, setMaxSkipsPerTurn] = useState(3);
     const [showPlayerNames, setShowPlayerNames] = useState(false);
+    // Add a separate state for categories
+    const [categories, setCategories] = useState(gameState?.settings?.categories || ['Object', 'Nature', 'Person', 'Action', 'World', 'Random']);
     // Track player names for each team
     const [teamPlayers, setTeamPlayers] = useState<Record<number, string[]>>(() => {
         const initialTeamPlayers: Record<number, string[]> = {};
@@ -74,7 +76,14 @@ export default function SetupPage() {
         window.location.href = path;
     };
 
-    // Update localStorage whenever state changes
+    // Add a separate useEffect to initialize state from gameState only once on mount
+    useEffect(() => {
+        if (gameState?.settings?.categories) {
+            setCategories(gameState.settings.categories);
+        }
+    }, []);
+
+    // Update localStorage whenever state changes - fixed to avoid circular dependency
     useEffect(() => {
         setGameState({
             teams,
@@ -83,11 +92,11 @@ export default function SetupPage() {
                 winningScore,
                 questionsPerTurn: 5,
                 skipPenalty: 1,
-                categories: gameState?.settings?.categories || ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+                categories, // Use the new categories state instead of referring to gameState
                 useTimer,
             }
         });
-    }, [teams, timeLimit, winningScore, useTimer, setGameState, gameState?.settings?.categories]);
+    }, [teams, timeLimit, winningScore, useTimer, categories, setGameState]); // Remove gameState from dependencies
 
     const handleAddTeam = () => {
         if (teams.length < 6) {
@@ -193,7 +202,7 @@ export default function SetupPage() {
             localStorage.setItem('articulate:settings', JSON.stringify({
                 timeLimit: timeLimit || 30,
                 winningScore: winningScore || 30,
-                categories: gameState?.settings?.categories || ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+                categories: categories, // Use the categories state variable
                 useTimer: useTimer !== false,
                 questionsPerTurn: 5,  // Default value
                 skipPenalty: 1,       // Default value

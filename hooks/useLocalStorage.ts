@@ -62,16 +62,17 @@ export function useLocalStorage<T>(
             // Check if we're in a browser environment
             if (typeof window !== 'undefined') {
                 // Save to local storage
-                window.localStorage.setItem(key, JSON.stringify(valueToStore));
-
-                // NOTE: We're removing this custom event dispatch as it might interfere with navigation
-                // Dispatch storage event for cross-tab communication is now handled by the browser naturally
-                // when localStorage.setItem is called. This custom event might be causing issues.
+                // The JSON.stringify is necessary to avoid issues when storing objects
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                } catch (storageError) {
+                    console.error(`Error writing to localStorage key "${key}":`, storageError);
+                }
             }
         } catch (error) {
             console.error(`Error setting localStorage key "${key}":`, error);
         }
-    }, [key, storedValue]);
+    }, [key]); // Remove storedValue from dependencies to break circular dependency
 
     // Listen for changes to this localStorage key in other tabs/windows
     useEffect(() => {
