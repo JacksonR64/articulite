@@ -1,152 +1,54 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import Link from 'next/link';
-import { Question } from '@/lib/storage';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 
 interface QuestionFallbackProps {
-    category: string;
-    errorMessage?: string;
-    onManualAdd?: (questions: Question[]) => void;
+    showConfigButton?: boolean;
 }
 
 /**
- * Fallback component when OpenAI API is unavailable
- * Allows manual question entry as an alternative
+ * Component to display when OpenAI API key is missing
+ * Informs the user and provides a button to configure the API key
  */
-export function QuestionFallback({
-    category,
-    errorMessage,
-    onManualAdd
-}: QuestionFallbackProps) {
-    const [questions, setQuestions] = useState<string[]>(['', '', '']);
-    const [success, setSuccess] = useState(false);
+export const QuestionFallback: React.FC<QuestionFallbackProps> = ({
+    showConfigButton = true
+}) => {
+    const router = useRouter();
 
-    // Add a new empty question input
-    const addQuestion = useCallback(() => {
-        setQuestions(prev => [...prev, '']);
-    }, []);
-
-    // Remove a question at a specific index
-    const removeQuestion = useCallback((index: number) => {
-        setQuestions(prev => prev.filter((_, i) => i !== index));
-    }, []);
-
-    // Update a question at a specific index
-    const updateQuestion = useCallback((index: number, value: string) => {
-        setQuestions(prev => {
-            const updated = [...prev];
-            updated[index] = value;
-            return updated;
-        });
-    }, []);
-
-    // Submit manually entered questions
-    const handleSubmit = useCallback(() => {
-        // Filter out empty questions
-        const validQuestions = questions.filter(q => q.trim().length > 0);
-
-        if (validQuestions.length === 0) {
-            return;
-        }
-
-        // Convert to Question objects
-        const questionObjects: Question[] = validQuestions.map((text, index) => ({
-            id: `manual-${category}-${Date.now()}-${index}`,
-            category,
-            text,
-            difficulty: 'medium',
-            used: false
-        }));
-
-        // Call the callback
-        if (onManualAdd) {
-            onManualAdd(questionObjects);
-        }
-
-        // Reset form and show success message
-        setQuestions(['', '', '']);
-        setSuccess(true);
-
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-            setSuccess(false);
-        }, 3000);
-    }, [category, questions, onManualAdd]);
+    const navigateToSettings = () => {
+        router.push('/settings');
+    };
 
     return (
-        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-900">
-            <h3 className="text-lg font-semibold mb-2 text-orange-800 dark:text-orange-300">
-                API Unavailable
-            </h3>
-
-            {errorMessage && (
-                <p className="mb-4 text-red-600 dark:text-red-400 text-sm">
-                    {errorMessage}
-                </p>
-            )}
-
-            <p className="mb-4 text-gray-700 dark:text-gray-300">
-                The OpenAI API is currently unavailable. You can:
-            </p>
-
-            <ul className="list-disc pl-5 mb-4 text-gray-700 dark:text-gray-300">
-                <li>
-                    <Link href="/settings" className="text-blue-600 hover:underline">
-                        Configure your API key
-                    </Link> if you haven&apos;t done so
-                </li>
-                <li>Or manually enter questions below</li>
-            </ul>
-
-            <div className="mb-4">
-                <h4 className="font-medium mb-2">Manual Question Entry for {category}</h4>
-
-                {questions.map((question, index) => (
-                    <div key={index} className="flex mb-2">
-                        <input
-                            type="text"
-                            value={question}
-                            onChange={(e) => updateQuestion(index, e.target.value)}
-                            placeholder={`Enter a question for ${category}...`}
-                            className="flex-1 p-2 border rounded-l dark:bg-gray-700 dark:border-gray-600"
-                        />
-                        <button
-                            onClick={() => removeQuestion(index)}
-                            className="px-3 bg-red-500 text-white rounded-r"
-                            title="Remove question"
-                        >
-                            ×
-                        </button>
-                    </div>
-                ))}
-
-                <div className="flex space-x-2 mt-3">
-                    <button
-                        onClick={addQuestion}
-                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded"
-                    >
-                        Add Another Question
-                    </button>
-
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!questions.some(q => q.trim().length > 0)}
-                        className={`px-3 py-1 text-sm rounded ${questions.some(q => q.trim().length > 0)
-                                ? 'bg-green-600 text-white'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
-                    >
-                        Save Questions
-                    </button>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm my-4">
+            <div className="flex items-start">
+                <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
                 </div>
-
-                {success && (
-                    <div className="mt-2 text-green-600">
-                        Questions saved successfully!
-                    </div>
-                )}
+                <div className="ml-3">
+                    <p className="text-sm text-yellow-700 font-medium">
+                        OpenAI API Key Missing
+                    </p>
+                    <p className="mt-2 text-sm text-yellow-600">
+                        You're currently using fallback questions. For better, AI-generated questions, please add your OpenAI API key in the settings.
+                    </p>
+                    {showConfigButton && (
+                        <p className="mt-3">
+                            <button
+                                onClick={navigateToSettings}
+                                className="px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-xs font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                            >
+                                Configure API Key
+                            </button>
+                        </p>
+                    )}
+                </div>
             </div>
         </div>
     );
-} 
+};
+
+export default QuestionFallback; 

@@ -8,12 +8,15 @@ import { useAuth } from '@/contexts';
 import { useGame } from '@/contexts/game/game-context';
 import { GamePhase } from '@/lib/storage/models';
 import TabletopGameView from './tabletop-view';
+import QuestionFallback from '@/components/game/QuestionFallback';
+import { getOpenAIConfig } from '@/lib/api';
 
 // Main Game component with game logic
 export default function GameContent() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [activeTeamName, setActiveTeamName] = useState("");
+    const [hasApiKey, setHasApiKey] = useState(false);
 
     // Use a try/catch block to handle any errors in the useAuth hook
     const auth = {
@@ -94,6 +97,10 @@ export default function GameContent() {
 
     useEffect(() => {
         setMounted(true);
+
+        // Check if OpenAI API key is configured
+        const config = getOpenAIConfig();
+        setHasApiKey(!!config.apiKey);
 
         // Safe to update once component is mounted on the client
         if (safeGame.gameState) {
@@ -220,6 +227,8 @@ export default function GameContent() {
                             </button>
                         </div>
                     </div>
+
+                    {!hasApiKey && <QuestionFallback showConfigButton={true} />}
 
                     <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg text-center">
                         <h2 className="text-2xl font-bold mb-6">

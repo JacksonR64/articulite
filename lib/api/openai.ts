@@ -105,7 +105,8 @@ export async function makeOpenAIRequest(
     };
 
     if (!config.apiKey) {
-        throw new Error('OpenAI API key is missing. Please provide an API key in the settings.');
+        console.warn('OpenAI API key is missing. Using fallback questions. Configure your API key in Settings to use AI-generated questions.');
+        throw new Error('OpenAI API key is missing. Please provide an API key in the settings. The app will use fallback questions for now.');
     }
 
     try {
@@ -125,6 +126,7 @@ export async function makeOpenAIRequest(
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            console.error(`OpenAI API error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
             throw new Error(
                 `OpenAI API error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`
             );
