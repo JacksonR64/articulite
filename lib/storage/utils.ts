@@ -11,10 +11,7 @@ export const CURRENT_VERSION = '1.0.0';
  * Check if localStorage is available (not running on server)
  */
 const isLocalStorageAvailable = (): boolean => {
-    if (typeof window === 'undefined') {
-        console.warn('localStorage is not available - running on server');
-        return false;
-    }
+    if (typeof window === 'undefined') return false;
 
     try {
         const testKey = '__test__';
@@ -22,7 +19,6 @@ const isLocalStorageAvailable = (): boolean => {
         window.localStorage.removeItem(testKey);
         return true;
     } catch (e) {
-        console.warn('localStorage is not available - browser restrictions');
         return false;
     }
 };
@@ -35,6 +31,7 @@ const isLocalStorageAvailable = (): boolean => {
  */
 export function storeData<T>(key: StorageKeys, data: T): boolean {
     if (!isLocalStorageAvailable()) {
+        console.warn('localStorage is not available in this environment');
         return false;
     }
 
@@ -55,15 +52,13 @@ export function storeData<T>(key: StorageKeys, data: T): boolean {
 
 /**
  * Retrieves data from localStorage with version checking
- * NOTE: Do not use this directly in component render - it can cause hydration issues.
- * Instead, use useSafeLocalStorage hook which handles SSR properly.
- * 
  * @param key The storage key to retrieve
  * @param defaultValue The default value if no data exists
  * @returns The stored data or default value
  */
-export function retrieveData<T>(key: StorageKeys | string, defaultValue: T): T {
+export function retrieveData<T>(key: StorageKeys, defaultValue: T): T {
     if (!isLocalStorageAvailable()) {
+        console.warn('localStorage is not available in this environment');
         return defaultValue;
     }
 
@@ -74,33 +69,19 @@ export function retrieveData<T>(key: StorageKeys | string, defaultValue: T): T {
             return defaultValue;
         }
 
-        try {
-            const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(raw) as VersionedStorage<T>;
 
-            // Check if this is versioned data
-            if (parsed.version && parsed.data) {
-                const versionedData = parsed as VersionedStorage<T>;
+        // Handle version migrations if needed
+        if (needsMigration(parsed.version, key)) {
+            const migrated = migrateData<T>(parsed, key);
 
-                // Handle version migrations if needed for StorageKeys
-                if (typeof key === 'string' && Object.values(StorageKeys).includes(key as StorageKeys) &&
-                    needsMigration(versionedData.version, key as StorageKeys)) {
-                    const migrated = migrateData<T>(versionedData, key as StorageKeys);
+            // Save the migrated data back to storage
+            localStorage.setItem(key, JSON.stringify(migrated));
 
-                    // Save the migrated data back to storage
-                    localStorage.setItem(key, JSON.stringify(migrated));
-
-                    return migrated.data;
-                }
-
-                return versionedData.data;
-            }
-
-            // Handle direct data storage (without versioning)
-            return parsed as T;
-        } catch (parseError) {
-            console.error('Failed to parse stored data:', parseError);
-            return defaultValue;
+            return migrated.data;
         }
+
+        return parsed.data;
     } catch (e) {
         handleStorageError(e);
         return defaultValue;
@@ -114,6 +95,7 @@ export function retrieveData<T>(key: StorageKeys | string, defaultValue: T): T {
  */
 export function removeData(key: StorageKeys): boolean {
     if (!isLocalStorageAvailable()) {
+        console.warn('localStorage is not available in this environment');
         return false;
     }
 

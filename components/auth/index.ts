@@ -2,4 +2,4 @@
  * Authentication Component Exports
  */
 
-export { LoginForm } from './login-form'; 
+export * from './auth-wrapper'; 

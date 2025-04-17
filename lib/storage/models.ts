@@ -4,6 +4,16 @@
  */
 
 /**
+ * Game phases
+ */
+export enum GamePhase {
+    Setup = 'setup',
+    Question = 'question',
+    TurnSummary = 'turn-summary',
+    GameEnd = 'game-end'
+}
+
+/**
  * Team data model
  */
 export interface Team {
@@ -11,6 +21,7 @@ export interface Team {
     name: string;
     color: string;
     score: number;
+    players?: Array<{ name: string }>;
 }
 
 /**
@@ -46,6 +57,8 @@ export interface Turn {
 export interface GameSettings {
     timeLimit: number;
     winningScore: number;
+    questionsPerTurn: number;
+    skipPenalty: number;
     categories: string[];
     useTimer: boolean;
 }

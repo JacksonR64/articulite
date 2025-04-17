@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Team, GameSettings, GamePhase } from '@/lib/storage/models';
 import { storeData, retrieveData } from '@/lib/storage/utils';
 import { getRandomQuestion } from '@/lib/api';
@@ -65,21 +65,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({
 }) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
-    
-    // Use refs to track initialization and prevent infinite update loops
-    const isInitialized = useRef(false);
-    const stateChangeInProgress = useRef(false);
-    const prevGameState = useRef<GameState | null>(null);
 
     // Initialize game state
     useEffect(() => {
-        // Skip if already initialized to prevent unnecessary re-renders
-        if (isInitialized.current) {
-            return;
-        }
-        
         console.log('Initializing game with:', { initialTeams, initialSettings });
-        isInitialized.current = true;
 
         try {
             // Try to load existing game state first
@@ -88,7 +77,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({
             if (savedState && savedState.teams && savedState.teams.length > 0) {
                 console.log('Loaded saved game state:', savedState);
                 setGameState(savedState);
-                prevGameState.current = savedState;
                 return;
             }
 
@@ -97,7 +85,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({
                 const mergedSettings = { ...defaultSettings, ...initialSettings };
 
                 console.log('Creating new game state with provided teams and settings');
-                const newState = {
+                setGameState({
                     teams: initialTeams,
                     settings: mergedSettings,
                     currentTeamIndex: 0,
@@ -108,13 +96,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({
                     turnScore: 0,
                     turnQuestions: 0,
                     isTimerRunning: false,
-                };
-                setGameState(newState);
-                prevGameState.current = newState;
+                });
             } else {
                 // If no teams are provided and no saved state, create default state
                 console.warn('No teams provided and no saved game state, using defaults');
-                const defaultState = {
+                setGameState({
                     teams: [
                         { id: 1, name: 'Team 1', color: '#FF5733', score: 0, players: [{ name: 'Player 1' }] },
                         { id: 2, name: 'Team 2', color: '#33A1FF', score: 0, players: [{ name: 'Player 1' }] }
@@ -128,14 +114,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({
                     turnScore: 0,
                     turnQuestions: 0,
                     isTimerRunning: false,
-                };
-                setGameState(defaultState);
-                prevGameState.current = defaultState;
+                });
             }
         } catch (error) {
             console.error('Error initializing game state:', error);
             // Create fallback state in case of errors
-            const fallbackState = {
+            setGameState({
                 teams: [
                     { id: 1, name: 'Team 1', color: '#FF5733', score: 0, players: [{ name: 'Player 1' }] },
                     { id: 2, name: 'Team 2', color: '#33A1FF', score: 0, players: [{ name: 'Player 1' }] }
@@ -149,39 +133,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({
                 turnScore: 0,
                 turnQuestions: 0,
                 isTimerRunning: false,
-            };
-            setGameState(fallbackState);
-            prevGameState.current = fallbackState;
+            });
         }
     }, [initialTeams, initialSettings]);
 
     // Save game state to localStorage
     useEffect(() => {
-        // Skip if state change is in progress or no game state
-        if (!gameState || stateChangeInProgress.current) {
-            return;
+        if (gameState) {
+            storeData('articulate:current_game' as any, gameState);
         }
-        
-        // Skip if the state hasn't actually changed
-        if (JSON.stringify(gameState) === JSON.stringify(prevGameState.current)) {
-            return;
-        }
-        
-        console.log('Saving game state to localStorage');
-        prevGameState.current = gameState;
-        storeData('articulate:current_game' as any, gameState);
     }, [gameState]);
 
     // Timer effect
     useEffect(() => {
-        // Clear existing interval if any
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            setTimerInterval(null);
-        }
-        
         if (gameState?.isTimerRunning && gameState.timer > 0) {
-            console.log('Starting timer interval');
             const interval = setInterval(() => {
                 setGameState((prev) => {
                     if (!prev) return prev;
@@ -228,17 +193,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({
         return team.players[gameState.currentPlayerIndex];
     }, [gameState, getCurrentTeam]);
 
-    // Start game
-    const startGame = useCallback(() => {
-        setGameState((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                currentPhase: GamePhase.Setup,
-            };
-        });
-    }, []);
-
     // Load next question
     const loadNextQuestion = useCallback(async () => {
         try {
@@ -266,6 +220,25 @@ export const GameProvider: React.FC<GameProviderProps> = ({
             console.error('Error loading question:', error);
         }
     }, [gameState]);
+
+    // Start game
+    const startGame = useCallback(() => {
+        // First update the game state to prepare for starting a turn
+        setGameState((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                currentPhase: GamePhase.Question,
+                timer: prev.settings.timeLimit,
+                turnScore: 0,
+                turnQuestions: 0,
+                isTimerRunning: true,
+            };
+        });
+
+        // Load the first question
+        loadNextQuestion();
+    }, [loadNextQuestion]);
 
     // Next turn
     const nextTurn = useCallback(() => {

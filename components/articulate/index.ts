@@ -8,5 +8,6 @@
 export { TeamDisplay } from './team/team-display';
 export { QuestionCard } from './question/question-card';
 export { CountdownTimer } from './timer/countdown-timer';
+export { TurnSummary } from './turn/turn-summary';
 
 // Will export components from subfolders once implemented 

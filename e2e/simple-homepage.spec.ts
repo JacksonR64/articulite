@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('should open homepage', async ({ page }) => {
     // Navigate to the homepage
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3333');
 
     // Take a screenshot for verification
     await page.screenshot({ path: 'homepage.png' });

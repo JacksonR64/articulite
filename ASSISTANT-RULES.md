@@ -69,40 +69,6 @@
     - Then check navigation methods and redirects
     - Finally, investigate event handling details
 
-## Clerk Authentication Rules
-
-1. **Clerk API Version Compatibility Rule**
-   - Always verify that middleware implementation matches the installed Clerk version
-   - Check for breaking API changes between versions (especially `auth().protect()` vs manual auth flow)
-   - Use `await auth()` with async/await pattern as Clerk auth is asynchronous
-   - Verify required imports (e.g., `NextResponse`) when implementing middleware redirects
-
-2. **Authentication Flow Verification Rule**
-   - Test both authenticated and unauthenticated user journeys
-   - Verify that public routes are accessible without authentication
-   - Confirm that protected routes correctly redirect to sign-in
-   - Check for redirect loops caused by incompatible middleware implementations
-
-3. **Build-time vs. Runtime Auth Verification Rule**
-   - Check both build-time (`npm run build`) and runtime (`npm run dev`) for auth-related errors
-   - Be aware of SSR/SSG complications with authentication (e.g., useSearchParams in SSO callback pages)
-   - Consider disabling static generation for authentication-related pages
-   - Test both development and production builds for authentication compatibility
-
-4. **Middleware Debugging Rule**
-   - Use `{ debug: true }` in clerkMiddleware for detailed logs during development
-   - Check browser network requests to detect redirect patterns and auth issues
-   - Console log key steps in authentication flow to pinpoint exact failure points
-   - Add explicit error handling for authentication failure scenarios
-
-## Next.js 15+ and Clerk Integration Rules
-
-1. **Next.js 15 Compatibility Rule**
-   - Be aware of Node.js version compatibility issues with Next.js 15
-   - Use LTS Node.js versions (18.x or 20.x) for development
-   - Understand correct flag usage (e.g., `--turbo` instead of `--no-turbo`)
-   - Verify middleware syntax compatibility with Next.js 15
-
 ## Command Reference for Future Use
 
 ### Server Management Commands
@@ -176,33 +142,5 @@ In this session, we successfully diagnosed and fixed navigation issues across th
    - Added proper event handling and visual feedback
    - Implemented error handling with fallback navigation options
    - Resolved redirect loops caused by inconsistent localStorage keys
-
-The most valuable lessons were: (1) check data consistency across components before assuming event problems, (2) trace entire navigation flows including initialization logic, and (3) use consistent navigation methods throughout the application.
-
-## Hydration Debugging Rules
-
-1. **SSR/CSR Consistency Rule**
-   - Initial server-rendered HTML must match client-side rendered content
-   - Use mounting detection (`useState(false)` + `useEffect` to set true) to handle browser-only features
-   - Set identical default values for SSR and client rendering to prevent mismatches
-   - Never access browser APIs (localStorage, window, document) during initial render
-
-2. **Safe Local Storage Pattern Rule**
-   - Create separate hooks (e.g., `useSafeLocalStorage`) that handle hydration properly
-   - Initialize state with fixed default values, not localStorage values
-   - Load from localStorage only after component has mounted via useEffect
-   - Provide clear documentation warnings for proper usage patterns
-
-3. **Browser API Access Rule**
-   - Add `typeof window !== 'undefined'` checks before all browser API access
-   - Create wrapper functions that safely handle server/client differences
-   - Consider creating separate client components (with 'use client' directive) for browser API usage
-   - Add meaningful console warnings when APIs are unavailable
-
-4. **Component Structure for Hydration Rule**
-   - Split components with conditional rendering based on client-side state
-   - Use the "content swapping after mount" pattern for components that need browser APIs
-   - Provide identical skeletons/placeholders during SSR for dynamic content
-   - Consider using Next.js suspense boundaries for components that might cause hydration issues
 
 The most valuable lessons were: (1) check data consistency across components before assuming event problems, (2) trace entire navigation flows including initialization logic, and (3) use consistent navigation methods throughout the application. 

@@ -65,7 +65,5 @@ tasks/
 # Cursor MCP config with sensitive API keys
 .cursor/mcp.json
 
-# Remove these lines to track the documentation files again
-# CHANGES.md
-# PROJECT_STRUCTURE.md
-# README-task-master.md 
+# Documentation files are now tracked in Git
+# (All references to documentation files have been removed) 

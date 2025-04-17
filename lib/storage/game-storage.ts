@@ -12,6 +12,8 @@ import { storeData, retrieveData, removeData } from './utils';
 const DEFAULT_GAME_SETTINGS = {
     timeLimit: 30,
     winningScore: 30,
+    questionsPerTurn: 5,
+    skipPenalty: 1,
     categories: ['Object', 'Nature', 'Action', 'World', 'Person', 'Random'],
     useTimer: true
 };

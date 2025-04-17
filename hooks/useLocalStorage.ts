@@ -25,8 +25,22 @@ export function useLocalStorage<T>(
             // Get from local storage by key
             const item = window.localStorage.getItem(key);
 
-            // Parse stored json or if none return initialValue
-            return item ? JSON.parse(item) : initialValue;
+            // Return initialValue if no item found
+            if (!item) {
+                return initialValue;
+            }
+
+            // Try to parse the JSON
+            try {
+                const parsed = JSON.parse(item);
+                // Verify that the parsed value is not null or undefined
+                return parsed !== null && parsed !== undefined ? parsed : initialValue;
+            } catch (parseError) {
+                console.error(`Error parsing localStorage key "${key}":`, parseError);
+                // Clear the corrupted value
+                window.localStorage.removeItem(key);
+                return initialValue;
+            }
         } catch (error) {
             // If error also return initialValue
             console.error(`Error reading localStorage key "${key}":`, error);

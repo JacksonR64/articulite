@@ -1,6 +1,10 @@
 /**
  * Question Generation Service
  * Handles generating questions with OpenAI and caching results
+ * 
+ * NOTE: All category names are normalized internally to have the first letter
+ * uppercase and the rest lowercase (e.g., "Object", "Nature", "World", etc.)
+ * regardless of how they are provided to the functions.
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -440,8 +444,10 @@ export async function generateQuestionsForCategories(
     await Promise.allSettled(
         categories.map(async (category) => {
             try {
-                const questions = await generateQuestions(category, countPerCategory);
-                results[category] = questions;
+                // Normalize the category name if it's not already normalized
+                const normalizedCategory = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+                const questions = await generateQuestions(normalizedCategory, countPerCategory);
+                results[normalizedCategory] = questions;
             } catch (error) {
                 console.error(`Failed to generate questions for ${category}:`, error);
                 failedCategories.push(category);
@@ -470,11 +476,70 @@ export async function forceRegenerateQuestions(
     // Clear the current cache first
     clearQuestionCache();
 
+    // Normalize category names
+    const normalizedCategories = categories.map(
+        category => category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()
+    );
+
     // Then generate new questions for all categories
     try {
-        await generateQuestionsForCategories(categories, countPerCategory);
-        console.log(`Successfully regenerated questions for ${categories.length} categories`);
+        await generateQuestionsForCategories(normalizedCategories, countPerCategory);
+        console.log(`Successfully regenerated questions for ${normalizedCategories.length} categories`);
     } catch (error) {
         console.error("Error regenerating questions:", error);
+    }
+}
+
+/**
+ * Get a random question for a specific category
+ * @param category The category to get a question for
+ * @returns A random question from the specified category
+ */
+export async function getRandomQuestion(category: string): Promise<Question> {
+    try {
+        // Normalize category name to match our expected format (first letter capitalized)
+        const normalizedCategory = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+
+        // First check if we have cached questions for this category
+        if (hasCachedQuestions(normalizedCategory, 1)) {
+            // Get all unused questions for the category
+            const cache = getQuestionCache();
+            const questions = cache.categories[normalizedCategory] || [];
+            const unusedQuestions = questions.filter(q => !q.used);
+
+            if (unusedQuestions.length > 0) {
+                // Get a random question from unused ones
+                const randomIndex = Math.floor(Math.random() * unusedQuestions.length);
+                const question = unusedQuestions[randomIndex];
+
+                // Mark the question as used
+                markQuestionsAsUsed([question.id]);
+
+                return question;
+            }
+        }
+
+        // If no cached questions or all are used, generate new ones
+        console.log(`Generating new questions for category: ${normalizedCategory}`);
+        const newQuestions = await generateQuestions(normalizedCategory, 5);
+
+        if (newQuestions.length === 0) {
+            throw new Error(`Failed to generate questions for category: ${normalizedCategory}`);
+        }
+
+        // Get a random question from the new batch
+        const randomIndex = Math.floor(Math.random() * newQuestions.length);
+        const question = newQuestions[randomIndex];
+
+        // Mark it as used
+        markQuestionsAsUsed([question.id]);
+
+        return question;
+    } catch (error) {
+        console.error(`Error getting random question for ${category}:`, error);
+
+        // Generate a fallback question procedurally if all else fails
+        const fallbackQuestions = generateRandomQuestions(category, 1);
+        return fallbackQuestions[0];
     }
 } 

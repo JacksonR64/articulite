@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuestionCard, CountdownTimer } from '@/components/articulate';
 import { TurnSummary } from '@/components/articulate/turn/turn-summary';
@@ -14,11 +14,6 @@ export default function GameContent() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [activeTeamName, setActiveTeamName] = useState("");
-
-    // Create refs to track state initialization and prevent loops
-    const stateInitialized = useRef(false);
-    const skipStateUpdate = useRef(false);
-    const prevGameState = useRef<any>(null);
 
     // Use a try/catch block to handle any errors in the useAuth hook
     const auth = {
@@ -97,59 +92,32 @@ export default function GameContent() {
         skippedQuestions: [] as QuestionType[]
     });
 
-    // First effect to mark component as mounted
     useEffect(() => {
         setMounted(true);
-        return () => {
-            // Clean up when component unmounts
-            stateInitialized.current = false;
-        };
-    }, []);
 
-    // Second effect to sync game state to local state
-    useEffect(() => {
-        // Only update state if component is mounted and game state exists
-        if (!mounted || !safeGame.gameState) {
-            return;
-        }
+        // Safe to update once component is mounted on the client
+        if (safeGame.gameState) {
+            try {
+                setLocalState({
+                    currentPhase: safeGame.gameState.currentPhase || GamePhase.Setup,
+                    isTimerRunning: safeGame.gameState.isTimerRunning || false,
+                    timer: safeGame.gameState.timer || 0,
+                    turnScore: safeGame.gameState.turnScore || 0,
+                    currentQuestion: safeGame.gameState.currentQuestion || null,
+                    activeTeam: safeGame.getCurrentTeam() || null,
+                    correctAnswers: [],
+                    skippedQuestions: []
+                });
 
-        // Check if state is already initialized or if update should be skipped
-        if (skipStateUpdate.current) {
-            skipStateUpdate.current = false;
-            return;
-        }
-
-        // Skip if game state hasn't actually changed
-        const currentGameStateStr = JSON.stringify(safeGame.gameState);
-        if (stateInitialized.current && prevGameState.current === currentGameStateStr) {
-            return;
-        }
-
-        // Track state for future comparisons
-        prevGameState.current = currentGameStateStr;
-        stateInitialized.current = true;
-
-        try {
-            console.log('Updating local state from game state');
-            setLocalState({
-                currentPhase: safeGame.gameState.currentPhase || GamePhase.Setup,
-                isTimerRunning: safeGame.gameState.isTimerRunning || false,
-                timer: safeGame.gameState.timer || 0,
-                turnScore: safeGame.gameState.turnScore || 0,
-                currentQuestion: safeGame.gameState.currentQuestion || null,
-                activeTeam: safeGame.getCurrentTeam() || null,
-                correctAnswers: [],
-                skippedQuestions: []
-            });
-
-            if (safeGame.getCurrentTeam()) {
-                const team = safeGame.getCurrentTeam();
-                setActiveTeamName(team?.name || "Team");
+                if (safeGame.getCurrentTeam()) {
+                    const team = safeGame.getCurrentTeam();
+                    setActiveTeamName(team?.name || "Team");
+                }
+            } catch (error) {
+                console.error("Error updating local state:", error);
             }
-        } catch (error) {
-            console.error("Error updating local state:", error);
         }
-    }, [safeGame.gameState, safeGame.getCurrentTeam, mounted]);
+    }, [safeGame.gameState, safeGame.getCurrentTeam]);
 
     // Utility functions
     const navigateTo = (path: string) => {

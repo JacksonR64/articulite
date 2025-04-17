@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { forceRegenerateQuestions } from '@/lib/api/questions';
 import { RedirectToSignIn } from '@clerk/nextjs';
 import { AuthWrapper } from '@/components/auth/auth-wrapper';
@@ -10,7 +10,6 @@ import { Team } from '@/lib/storage/models';
 import { useUser } from '@clerk/nextjs';
 import TabletopView from './tabletop-view';
 import ClientWrapper from './client-wrapper';
-import { useSafeLocalStorage } from '@/hooks/useSafeLocalStorage';
 
 interface GameSettings {
     timeLimit: number;
@@ -21,26 +20,8 @@ interface GameSettings {
     useTimer: boolean;
 }
 
-// Default settings and teams for consistent SSR and client rendering
-const DEFAULT_TEAMS: Team[] = [
-    { id: 1, name: 'Team 1', color: '#FF5733', score: 0, players: [{ name: 'Player 1' }] },
-    { id: 2, name: 'Team 2', color: '#33A1FF', score: 0, players: [{ name: 'Player 1' }] }
-];
-
-const DEFAULT_SETTINGS: GameSettings = {
-    timeLimit: 60,
-    winningScore: 20,
-    questionsPerTurn: 5,
-    skipPenalty: 1,
-    categories: ['World', 'Object', 'Nature', 'Person', 'Action', 'Random'],
-    useTimer: true
-};
-
 // Main game page
 export default function GamePage() {
-    // Track if data has been loaded from localStorage to prevent infinite loops
-    const dataLoadedRef = useRef(false);
-
     // We'll wrap useUser in try/catch to gracefully handle when ClerkProvider isn't available yet
     let userState = { isLoaded: false, isSignedIn: false };
 
@@ -55,63 +36,68 @@ export default function GamePage() {
     const { isLoaded, isSignedIn } = userState;
     const [isTabletopMode, setIsTabletopMode] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [teams, setTeams] = useState<Team[]>([]);
+    const [settings, setSettings] = useState<GameSettings | null>(null);
 
-    // Start with default values for SSR to prevent hydration issues
-    const [teams, setTeams] = useState<Team[]>(DEFAULT_TEAMS);
-    const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
-
-    // Use safe localStorage hooks
-    const [storedTeams, setStoredTeams] = useSafeLocalStorage<Team[]>('articulate:teams', DEFAULT_TEAMS);
-    const [storedSettings, setStoredSettings] = useSafeLocalStorage<GameSettings>('articulate:settings', DEFAULT_SETTINGS);
-    const [isTabletopModeStored, setIsTabletopModeStored] = useSafeLocalStorage<boolean>('articulate:tabletop_mode', false);
-
-    // Load game data from localStorage on client-side only
+    // Load game data from localStorage on first render
     useEffect(() => {
-        // Only load data once to prevent infinite loops
-        if (dataLoadedRef.current) {
-            return;
-        }
-
         const loadGameData = async () => {
             try {
                 console.log('Loading game data from localStorage...');
-                dataLoadedRef.current = true;
 
-                // Set tabletop mode from stored value
-                setIsTabletopMode(isTabletopModeStored);
+                // Check if tabletop mode is enabled
+                const tabletopMode = retrieveData('articulate:tabletop_mode' as any, false);
+                setIsTabletopMode(tabletopMode);
 
-                // Load teams
-                if (storedTeams && Array.isArray(storedTeams) && storedTeams.length > 0) {
-                    console.log('Loaded teams:', storedTeams);
+                // Load teams from localStorage
+                const savedTeams = retrieveData<Team[] | null>('articulate:teams' as any, null);
+                console.log('Loaded teams:', savedTeams);
 
+                // If no teams found, create default teams
+                if (!savedTeams || !Array.isArray(savedTeams) || savedTeams.length === 0) {
+                    console.log('No teams found, creating default teams');
+                    // Create default teams if none exist
+                    const defaultTeams: Team[] = [
+                        { id: 1, name: 'Team 1', color: '#FF5733', score: 0, players: [{ name: 'Player 1' }] },
+                        { id: 2, name: 'Team 2', color: '#33A1FF', score: 0, players: [{ name: 'Player 1' }] }
+                    ];
+                    setTeams(defaultTeams);
+                } else {
                     // Ensure teams have proper structure
-                    const validatedTeams = storedTeams.map(team => ({
+                    const validatedTeams = savedTeams.map(team => ({
                         id: team.id || Math.floor(Math.random() * 10000),
                         name: team.name || `Team ${Math.floor(Math.random() * 100)}`,
                         color: team.color || '#' + Math.floor(Math.random() * 16777215).toString(16),
                         score: team.score || 0,
                         players: team.players || [{ name: 'Player 1' }]
                     }));
-
                     setTeams(validatedTeams);
-                } else {
-                    console.log('No teams found, using default teams');
                 }
 
-                // Load settings
-                if (storedSettings && typeof storedSettings === 'object') {
-                    console.log('Loaded settings:', storedSettings);
-                    setSettings(storedSettings);
+                // Load game settings
+                const savedSettings = retrieveData<GameSettings | null>('articulate:settings' as any, null);
+                if (savedSettings && typeof savedSettings === 'object') {
+                    console.log('Loaded settings:', savedSettings);
+                    setSettings(savedSettings);
                 } else {
+                    // Default settings
+                    const defaultSettings: GameSettings = {
+                        timeLimit: 60,
+                        winningScore: 20,
+                        questionsPerTurn: 5,
+                        skipPenalty: 1,
+                        categories: ['World', 'Object', 'Nature', 'Person', 'Action', 'Random'],
+                        useTimer: true
+                    };
                     console.log('Using default settings');
+                    setSettings(defaultSettings);
                 }
 
                 // Preload some questions for better performance
                 try {
-                    const categories = (storedSettings?.categories || DEFAULT_SETTINGS.categories).map(
+                    const categories = (savedSettings?.categories || ['World', 'Object', 'Nature', 'Person', 'Action', 'Random']).map(
                         cat => typeof cat === 'string' ? cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase() : 'Random'
                     );
-
                     await forceRegenerateQuestions(categories);
                     console.log('Questions preloaded successfully');
                 } catch (questionError) {
@@ -124,12 +110,24 @@ export default function GamePage() {
             } catch (error) {
                 console.error('Error loading game data:', error);
                 // Use default values as fallback
+                setTeams([
+                    { id: 1, name: 'Team 1', color: '#FF5733', score: 0, players: [{ name: 'Player 1' }] },
+                    { id: 2, name: 'Team 2', color: '#33A1FF', score: 0, players: [{ name: 'Player 1' }] }
+                ]);
+                setSettings({
+                    timeLimit: 60,
+                    winningScore: 20,
+                    questionsPerTurn: 5,
+                    skipPenalty: 1,
+                    categories: ['World', 'Object', 'Nature', 'Person', 'Action', 'Random'],
+                    useTimer: true
+                });
                 setIsLoading(false);
             }
         };
 
         loadGameData();
-    }, [storedTeams, storedSettings, isTabletopModeStored]);
+    }, []);
 
     // Show loading spinner while data is being loaded
     if (isLoading) {
@@ -159,6 +157,16 @@ export default function GamePage() {
         );
     }
 
+    // Ensure settings is never null
+    const safeSettings: GameSettings = settings || {
+        timeLimit: 60,
+        winningScore: 20,
+        questionsPerTurn: 5,
+        skipPenalty: 1,
+        categories: ['World', 'Object', 'Nature', 'Person', 'Action', 'Random'],
+        useTimer: true
+    };
+
     return (
         <AuthWrapper>
             {!isLoaded ? (
@@ -168,7 +176,7 @@ export default function GamePage() {
             ) : (
                 <ClientWrapper
                     teams={teams}
-                    settings={settings}
+                    settings={safeSettings}
                     isLoading={isLoading}
                 />
             )}

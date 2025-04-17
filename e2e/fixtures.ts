@@ -1,9 +1,31 @@
 import { test as base, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
+
+// Get script directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+// Try to get the baseUrl from test config
+let baseUrl = 'http://localhost:3333';
+try {
+    const configPath = path.join(__dirname, 'test-config.json');
+    if (existsSync(configPath)) {
+        const configJson = JSON.parse(readFileSync(configPath, 'utf8'));
+        baseUrl = configJson.baseUrl || baseUrl;
+    }
+} catch (error) {
+    console.warn('Failed to read test config, using default baseUrl:', baseUrl);
+}
 
 // Define the Articulate class with page objects and helper methods
 class Articulate {
     readonly page: Page;
+    readonly baseUrl: string;
 
     // Page objects
     playButton: any;
@@ -19,8 +41,9 @@ class Articulate {
     timerElement: any;
     enterGameButton: any;
 
-    constructor(page: Page) {
+    constructor(page: Page, baseUrl: string = 'http://localhost:3000') {
         this.page = page;
+        this.baseUrl = baseUrl;
 
         // Initialize page objects
         this.playButton = page.getByRole('button', { name: /play/i });
@@ -44,15 +67,18 @@ class Articulate {
 
     // Navigation methods
     async goto() {
-        await this.page.goto('/');
+        console.log(`Navigating to ${this.baseUrl}`);
+        await this.page.goto(this.baseUrl);
     }
 
     async gotoSetup() {
-        await this.page.goto('/setup');
+        console.log(`Navigating to ${this.baseUrl}/setup`);
+        await this.page.goto(`${this.baseUrl}/setup`);
     }
 
     async gotoGame() {
-        await this.page.goto('/game');
+        console.log(`Navigating to ${this.baseUrl}/game`);
+        await this.page.goto(`${this.baseUrl}/game`);
     }
 
     // Setup helper methods
@@ -84,10 +110,17 @@ class Articulate {
     }
 
     async startGame() {
+        console.log('Clicking Start Game button');
         await this.startGameButton.click();
+
         // Wait for game page to load
+        console.log('Waiting for navigation to game page');
         await this.page.waitForURL('**/game');
+
+        // Wait for UI to be ready
+        console.log('Waiting for game UI to be ready');
         await this.correctButton.waitFor();
+        console.log('Game started successfully');
     }
 
     // Game helper methods
@@ -133,10 +166,143 @@ class Articulate {
     }
 }
 
-// Create a test fixture that extends the base test with our Articulate helper
-export const test = base.extend<{ articulate: Articulate }>({
+// Helper to ensure the server is running before tests start
+async function ensureServerRunning() {
+    const serverScript = path.join(rootDir, 'scripts', 'manage-server.js');
+
+    console.log('Checking if server is already running...');
+
+    // Try to access the server
+    try {
+        const response = await fetch(baseUrl, { method: 'HEAD' });
+        if (response.ok) {
+            console.log(`Server is already running at ${baseUrl}`);
+            return;
+        }
+    } catch (error) {
+        console.log('Server is not running, starting it...');
+    }
+
+    // Start the server
+    return new Promise<void>((resolve, reject) => {
+        const serverProcess = spawn('node', [serverScript, 'start'], {
+            stdio: 'inherit',
+            shell: true,
+        });
+
+        // Wait for server to start (giving it 15 seconds)
+        let isResolved = false;
+        const timeout = setTimeout(() => {
+            if (!isResolved) {
+                console.error('Server failed to start within timeout');
+                isResolved = true;
+                reject(new Error('Server startup timeout'));
+            }
+        }, 15000);
+
+        // Check periodically if server is up
+        const checkInterval = setInterval(async () => {
+            try {
+                const response = await fetch(baseUrl, { method: 'HEAD' });
+                if (response.ok) {
+                    clearInterval(checkInterval);
+                    clearTimeout(timeout);
+                    if (!isResolved) {
+                        isResolved = true;
+                        console.log(`Server started successfully at ${baseUrl}`);
+                        resolve();
+                    }
+                }
+            } catch (error) {
+                // Server not ready yet, continue waiting
+            }
+        }, 1000);
+
+        // Handle server process exit
+        serverProcess.on('exit', (code) => {
+            if (code !== 0 && !isResolved) {
+                clearInterval(checkInterval);
+                clearTimeout(timeout);
+                isResolved = true;
+                reject(new Error(`Server process exited with code ${code}`));
+            }
+        });
+    });
+}
+
+// Extend the test context to include custom utilities
+interface ArticulateUtils {
+    // Navigation helpers
+    gotoHome: () => Promise<void>;
+    gotoSetup: () => Promise<void>;
+    gotoAuth: () => Promise<void>;
+    gotoGamePage: () => Promise<void>;
+
+    // Auth helpers
+    login: (password?: string) => Promise<void>;
+}
+
+// Create a fixture for Articulate app testing
+export const test = base.extend<{ articulate: ArticulateUtils }>({
+    // Ensure server is running before all tests
+    page: async ({ page }, use) => {
+        try {
+            await ensureServerRunning();
+        } catch (error) {
+            console.warn('Warning: Failed to ensure server is running:', error);
+        }
+        await use(page);
+    },
+
     articulate: async ({ page }, use) => {
-        const articulate = new Articulate(page);
+        // Define the base URL
+        const baseURL = 'http://localhost:3333';
+
+        // Utility functions
+        const articulate: ArticulateUtils = {
+            // Navigation
+            gotoHome: async () => {
+                await page.goto(baseURL);
+            },
+
+            gotoSetup: async () => {
+                await page.goto(`${baseURL}/setup`);
+            },
+
+            gotoAuth: async () => {
+                await page.goto(`${baseURL}/auth`);
+            },
+
+            gotoGamePage: async () => {
+                // Need to set up localStorage with necessary game settings first
+                await page.goto(baseURL);
+
+                // Set up minimum game settings required to access the game page
+                await page.evaluate(() => {
+                    localStorage.setItem('gameSettings', JSON.stringify({
+                        timeLimit: 30,
+                        winningScore: 30,
+                        useTimer: true,
+                        allowSkips: true,
+                        maxSkipsPerTurn: 3
+                    }));
+
+                    // Mock authentication
+                    localStorage.setItem('auth_token', 'test-token');
+                });
+
+                // Now navigate to game page
+                await page.goto(`${baseURL}/game`);
+            },
+
+            // Auth helpers
+            login: async (password = 'articulate') => {
+                await page.goto(`${baseURL}/auth`);
+                await page.fill('input[type="password"]', password);
+                await page.click('button[type="submit"]');
+            }
+        };
+
         await use(articulate);
     },
 });

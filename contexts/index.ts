@@ -11,4 +11,11 @@
  * Context Exports
  */
 
-export { AuthProvider, useAuth } from './auth-context'; 
+// Auth Context
+export { AuthProvider, useAuth } from './auth-context';
+
+// Tabletop Context
+export { TabletopProvider, useTabletop } from './game/tabletop-context';
+
+// Game Context
+export { GameProvider, useGame } from './game/game-context'; 

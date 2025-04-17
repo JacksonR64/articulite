@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSafeLocalStorage } from '@/hooks/useSafeLocalStorage';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { GameSettings, Team } from '@/lib/storage/models';
 import { StorageKeys } from '@/lib/storage/models';
 import { QuestionPreloader } from '@/components/game';
@@ -11,51 +11,53 @@ import { useAuth, SignOutButton, RedirectToSignIn } from '@clerk/nextjs';
 import { AuthWrapper } from '@/components/auth';
 import { SpinnerOverlay } from '@/components/ui/spinner';
 
-// Default values for initial state to ensure consistency between server and client
-const DEFAULT_TEAMS: Team[] = [
-    { id: 1, name: 'Team 1', color: 'blue', score: 0 },
-    { id: 2, name: 'Team 2', color: 'red', score: 0 },
-];
-
-const DEFAULT_SETTINGS: GameSettings = {
-    timeLimit: 30,
-    winningScore: 30,
-    questionsPerTurn: 5,
-    skipPenalty: 1,
-    categories: ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
-    useTimer: true
-};
-
 export default function SetupPage() {
     // Use Clerk authentication
     const { isLoaded, isSignedIn } = useAuth();
 
-    // Track when initial data is loaded from localStorage
-    const initialLoadComplete = useRef(false);
-    const skipNextEffect = useRef(false);
-
-    // Use safe localStorage to persist game settings - this prevents hydration mismatches
-    const [gameState, setGameState] = useSafeLocalStorage<{
+    // Use localStorage to persist game settings
+    const [gameState, setGameState] = useLocalStorage<{
         teams: Team[];
         settings: GameSettings;
     }>(StorageKeys.CURRENT_GAME, {
-        teams: DEFAULT_TEAMS,
-        settings: DEFAULT_SETTINGS
+        teams: [
+            { id: 1, name: 'Team 1', color: 'blue', score: 0 },
+            { id: 2, name: 'Team 2', color: 'red', score: 0 },
+        ],
+        settings: {
+            timeLimit: 30,
+            winningScore: 30,
+            questionsPerTurn: 5,
+            skipPenalty: 1,
+            categories: ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+            useTimer: true
+        }
     });
 
-    // Create local state from persisted state, using default values to prevent hydration issues
-    const [teams, setTeams] = useState<Team[]>(DEFAULT_TEAMS);
-    const [timeLimit, setTimeLimit] = useState(DEFAULT_SETTINGS.timeLimit);
-    const [winningScore, setWinningScore] = useState(DEFAULT_SETTINGS.winningScore);
-    const [useTimer, setUseTimer] = useState(DEFAULT_SETTINGS.useTimer);
+    // Create local state from persisted state
+    const [teams, setTeams] = useState<Team[]>(gameState?.teams || [
+        { id: 1, name: 'Team 1', color: 'blue', score: 0 },
+        { id: 2, name: 'Team 2', color: 'red', score: 0 },
+    ]);
+
+    // Add default values to handle cases where settings might be undefined
+    const [timeLimit, setTimeLimit] = useState(gameState?.settings?.timeLimit || 30);
+    const [winningScore, setWinningScore] = useState(gameState?.settings?.winningScore || 30);
+    const [useTimer, setUseTimer] = useState(gameState?.settings?.useTimer !== false); // Default to true if undefined
     const [allowSkips, setAllowSkips] = useState(true);
     const [maxSkipsPerTurn, setMaxSkipsPerTurn] = useState(3);
     const [showPlayerNames, setShowPlayerNames] = useState(false);
+    // Track player names for each team
     const [teamPlayers, setTeamPlayers] = useState<Record<number, string[]>>(() => {
         const initialTeamPlayers: Record<number, string[]> = {};
-        DEFAULT_TEAMS.forEach(team => {
-            initialTeamPlayers[team.id] = [];
-        });
+        // Only proceed if teams is defined and is an array
+        if (teams && Array.isArray(teams)) {
+            teams.forEach(team => {
+                if (team && typeof team.id === 'number') {
+                    initialTeamPlayers[team.id] = [];
+                }
+            });
+        }
         return initialTeamPlayers;
     });
     const [newPlayerName, setNewPlayerName] = useState('');
@@ -66,34 +68,6 @@ export default function SetupPage() {
 
     const router = useRouter();
 
-    // Sync state with localStorage value after component mounts
-    useEffect(() => {
-        if (gameState && !initialLoadComplete.current) {
-            // Mark that we've completed initial load to prevent loops
-            initialLoadComplete.current = true;
-            skipNextEffect.current = true;
-
-            if (gameState.teams && Array.isArray(gameState.teams)) {
-                setTeams(gameState.teams);
-            }
-
-            if (gameState.settings) {
-                setTimeLimit(gameState.settings.timeLimit || DEFAULT_SETTINGS.timeLimit);
-                setWinningScore(gameState.settings.winningScore || DEFAULT_SETTINGS.winningScore);
-                setUseTimer(gameState.settings.useTimer !== false);
-            }
-
-            // Update team players after teams are updated
-            const updatedTeamPlayers: Record<number, string[]> = {};
-            (gameState.teams || DEFAULT_TEAMS).forEach(team => {
-                updatedTeamPlayers[team.id] = [];
-            });
-            setTeamPlayers(updatedTeamPlayers);
-
-            console.log('Loaded initial state from localStorage');
-        }
-    }, [gameState]);
-
     // Add a direct navigation helper function
     const navigateTo = (path: string) => {
         console.log(`Navigating to: ${path}`);
@@ -102,27 +76,17 @@ export default function SetupPage() {
 
     // Update localStorage whenever state changes
     useEffect(() => {
-        // Skip this effect if it's triggered by the initial load
-        if (skipNextEffect.current) {
-            skipNextEffect.current = false;
-            return;
-        }
-
-        // Only update localStorage when values have actually changed
-        if (initialLoadComplete.current) {
-            console.log('Saving state changes to localStorage');
-            setGameState({
-                teams,
-                settings: {
-                    timeLimit,
-                    winningScore,
-                    questionsPerTurn: DEFAULT_SETTINGS.questionsPerTurn,
-                    skipPenalty: DEFAULT_SETTINGS.skipPenalty,
-                    categories: gameState?.settings?.categories || DEFAULT_SETTINGS.categories,
-                    useTimer,
-                }
-            });
-        }
+        setGameState({
+            teams,
+            settings: {
+                timeLimit,
+                winningScore,
+                questionsPerTurn: 5,
+                skipPenalty: 1,
+                categories: gameState?.settings?.categories || ['Object', 'Nature', 'Person', 'Action', 'World', 'Random'],
+                useTimer,
+            }
+        });
     }, [teams, timeLimit, winningScore, useTimer, setGameState, gameState?.settings?.categories]);
 
     const handleAddTeam = () => {

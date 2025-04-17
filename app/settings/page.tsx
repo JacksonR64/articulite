@@ -1,11 +1,6 @@
-import { Metadata } from 'next';
-import { ApiKeyManager } from '@/components/settings';
+'use client';
 
-// SEO metadata
-export const metadata: Metadata = {
-    title: 'Settings | ArticuLITE',
-    description: 'Configure your API settings for ArticuLITE',
-};
+import { ApiKeyManager } from '@/components/settings';
 
 /**
  * Settings page component

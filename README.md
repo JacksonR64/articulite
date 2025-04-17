@@ -10,27 +10,6 @@ A web-based adaptation of the Articulate board game with AI-powered question gen
 - **Game Management**: Track scores, time, and progress for each team
 - **Responsive Design**: Optimized for both desktop and mobile play
 
-## Authentication
-
-ArticuLITE uses Clerk for authentication and user management:
-
-- **Password Protection**: Game sessions are secured using Clerk authentication
-- **User Management**: Clerk handles user registration, login, and profile management
-- **Role-Based Access**: Different user roles can be defined for game administration
-- **Custom Middleware**: Protects routes based on authentication status
-
-To use authentication in your local development:
-
-1. Sign up for a Clerk account at https://clerk.com/
-2. Set up your Clerk application in the Clerk dashboard
-3. Add your Clerk API keys to the `.env.local` file:
-   ```
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-   CLERK_SECRET_KEY=sk_test_...
-   ```
-
-For more information on Clerk integration, see the [Clerk documentation](https://clerk.com/docs).
-
 ## Getting Started
 
 ### Prerequisites

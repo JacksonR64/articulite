@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SpinnerOverlay } from '@/components/ui/spinner';
 
-// Internal component that uses useSearchParams
-function SSOCallbackContent() {
+export default function SSOCallbackPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -23,18 +22,8 @@ function SSOCallbackContent() {
     }, [router, searchParams]);
 
     return (
-        <div className="flex flex-col items-center justify-center p-8">
-            <p className="text-center text-gray-500 mb-4">Completing authentication...</p>
-        </div>
-    );
-}
-
-export default function SSOCallbackPage() {
-    return (
         <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-gray-50 dark:bg-gray-900">
-            <Suspense fallback={<SpinnerOverlay message="Loading authentication..." />}>
-                <SSOCallbackContent />
-            </Suspense>
+            <SpinnerOverlay message="Completing authentication..." />
         </div>
     );
 } 

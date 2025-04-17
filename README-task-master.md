@@ -7,6 +7,8 @@ A task management system for AI-driven development with Claude, designed to work
 ## Requirements
 
 - Node.js 14.0.0 or higher
+  - Note: For the main ArticuLITE project, Node.js 18.x or 20.x LTS is recommended
+  - See [CHANGES.md](./CHANGES.md#known-issues) for Next.js compatibility details
 - Anthropic API key (Claude API)
 - Anthropic SDK version 0.39.0 or higher
 - OpenAI SDK (for Perplexity API integration, optional)
@@ -643,3 +645,44 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+## Project Structure
+
+Task Master has been integrated with the ArticuLITE project:
+
+1. **Main ArticuLITE Project**:
+   - Located in `/articulite` directory
+   - Next.js application (see structure in [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md))
+   - Testing setup described in [TESTING.md](./TESTING.md)
+
+2. **Fresh-ArticuLITE**:
+   - Located in `/fresh-articulite` directory (when available)
+   - Contains a fresh copy of the project for reference
+   - Requires separate dependency installation with `npm ci`
+
+Use the Task Master commands in the main project directory to manage tasks and development.
+
+## Known Issues
+
+### Node.js Version Compatibility
+
+- The main ArticuLITE project has compatibility issues with Node.js v23+
+- For development, use Node.js 18.x or 20.x LTS
+- See [CHANGES.md](./CHANGES.md#known-issues) for more detailed information
+
+### Port Conflicts
+
+When running the Playwright test viewer or the development server, you may encounter port conflicts:
+```bash
+Error: listen EADDRINUSE: address already in use ::1:9323
+```
+
+To resolve:
+1. Either stop the existing process using that port
+2. Or specify a different port:
+   ```bash
+   npx playwright show-report --port 9324
+   ```
+   ```bash
+   npm run dev -- --port 3334
+   ```
